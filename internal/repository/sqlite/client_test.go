@@ -165,7 +165,7 @@ func TestClientRepository_ValidateRedirectURI(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			valid, err := repo.ValidateRedirectURI(ctx, client.ID, tc.redirectURI)
+			valid, err := repo.ValidateRedirectURI(ctx, client.ClientID, tc.redirectURI)
 			if err != nil {
 				t.Fatalf("Failed to validate redirect URI: %v", err)
 			}

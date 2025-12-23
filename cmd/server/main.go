@@ -67,6 +67,10 @@ func main() {
 		tokenRepo,
 		userRepo,
 	)
+	sessionCleanupService := service.NewSessionCleanupService(
+		sessionRepo,
+		1*time.Hour, // 1時間ごとにクリーンアップ
+	)
 
 	// ハンドラーを初期化
 	authHandler := handler.NewAuthHandler(authService)
@@ -117,6 +121,13 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+
+	// セッションクリーンアップ用のコンテキスト
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+
+	// バックグラウンドでセッションクリーンアップを開始
+	go sessionCleanupService.Start(cleanupCtx)
 
 	// ゴルーチンでサーバーを起動
 	go func() {
