@@ -1,17 +1,17 @@
-# マルチステージビルド: ビルドステージ
-FROM golang:1.25-alpine AS dev
+# 開発ステージ
+FROM golang:1.23-alpine AS dev
 WORKDIR /app
-RUN apk add --no-cache git build-base
+RUN apk add --no-cache git build-base gcc musl-dev sqlite-dev
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 ENTRYPOINT ["go"]
 
 # マルチステージビルド: ビルドステージ
-FROM golang:1.25-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
-# 必要なパッケージをインストール
-RUN apk add --no-cache git ca-certificates tzdata
+# 必要なパッケージをインストール（SQLiteビルドに必要なgccとmusl-devを追加）
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -23,8 +23,8 @@ RUN go mod download
 # ソースコードをコピー
 COPY . .
 
-# バイナリをビルド（静的リンク、CGO無効）
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags='-w -s' -o server ./cmd/server
+# バイナリをビルド（CGO有効でSQLiteサポート）
+RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' -tags 'osusergo netgo sqlite_omit_load_extension' -o server ./cmd/server
 
 # 本番ステージ: 軽量なイメージ
 FROM alpine:latest

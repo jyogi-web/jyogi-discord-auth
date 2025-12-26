@@ -85,9 +85,9 @@ func (c *Client) GetUser(ctx context.Context, token *oauth2.Token) (*User, error
 
 // GuildMember はギルドメンバー情報を表します
 type GuildMember struct {
-	User   User     `json:"user"`
-	Roles  []string `json:"roles"`
-	JoinedAt string `json:"joined_at"`
+	User     User     `json:"user"`
+	Roles    []string `json:"roles"`
+	JoinedAt string   `json:"joined_at"`
 }
 
 // IsMemberOfGuild はユーザーが指定されたギルドのメンバーかどうかを確認します
