@@ -53,3 +53,15 @@ type TokenRepository interface {
 	Revoke(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context) error
 }
+
+// ProfileRepository はプロフィールデータアクセスのインターフェースを定義します
+type ProfileRepository interface {
+	Create(ctx context.Context, profile *domain.Profile) error
+	GetByID(ctx context.Context, id string) (*domain.Profile, error)
+	GetByUserID(ctx context.Context, userID string) (*domain.Profile, error)
+	GetByMessageID(ctx context.Context, messageID string) (*domain.Profile, error)
+	GetAll(ctx context.Context) ([]*domain.Profile, error)
+	Update(ctx context.Context, profile *domain.Profile) error
+	Upsert(ctx context.Context, profile *domain.Profile) error
+	Delete(ctx context.Context, id string) error
+}
