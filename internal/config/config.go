@@ -16,6 +16,10 @@ type Config struct {
 	DiscordRedirectURI  string
 	DiscordGuildID      string
 
+	// Discord Bot
+	DiscordBotToken        string
+	DiscordProfileChannel  string
+
 	// JWT
 	JWTSecret string
 
@@ -48,6 +52,8 @@ func Load() (*Config, error) {
 		DiscordClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
 		DiscordRedirectURI:  os.Getenv("DISCORD_REDIRECT_URI"),
 		DiscordGuildID:      os.Getenv("DISCORD_GUILD_ID"),
+		DiscordBotToken:     os.Getenv("DISCORD_BOT_TOKEN"),
+		DiscordProfileChannel: os.Getenv("DISCORD_PROFILE_CHANNEL"),
 		JWTSecret:           os.Getenv("JWT_SECRET"),
 		DatabasePath:        os.Getenv("DATABASE_PATH"),
 		ServerPort:          os.Getenv("SERVER_PORT"),
