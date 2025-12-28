@@ -113,3 +113,116 @@ func (c *Client) IsMemberOfGuild(ctx context.Context, token *oauth2.Token, guild
 
 	return true, nil
 }
+
+// Message はDiscordメッセージを表します
+type Message struct {
+	ID        string `json:"id"`
+	ChannelID string `json:"channel_id"`
+	Author    User   `json:"author"`
+	Content   string `json:"content"`
+	Timestamp string `json:"timestamp"`
+}
+
+// GetChannelMessages はチャンネルのメッセージを取得します（ページネーション非対応）
+// botTokenはBot認証用のトークンです
+func GetChannelMessages(ctx context.Context, botToken, channelID string, limit int) ([]*Message, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 100 // Discord APIの上限
+	}
+
+	url := fmt.Sprintf("https://discord.com/api/v10/channels/%s/messages?limit=%d", channelID, limit)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bot %s", botToken))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel messages: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("discord API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var messages []*Message
+	if err := json.NewDecoder(resp.Body).Decode(&messages); err != nil {
+		return nil, fmt.Errorf("failed to decode messages: %w", err)
+	}
+
+	return messages, nil
+}
+
+// GetAllChannelMessages はチャンネルのすべてのメッセージを取得します（ページネーション対応）
+// maxMessagesで取得する最大メッセージ数を指定できます（0の場合は制限なし）
+func GetAllChannelMessages(ctx context.Context, botToken, channelID string, maxMessages int) ([]*Message, error) {
+	var allMessages []*Message
+	var beforeID string
+	batchSize := 100 // Discord APIの1回あたりの最大取得数
+
+	for {
+		// URLを構築
+		url := fmt.Sprintf("https://discord.com/api/v10/channels/%s/messages?limit=%d", channelID, batchSize)
+		if beforeID != "" {
+			url += fmt.Sprintf("&before=%s", beforeID)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Authorization", fmt.Sprintf("Bot %s", botToken))
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get channel messages: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("discord API returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var messages []*Message
+		if err := json.NewDecoder(resp.Body).Decode(&messages); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode messages: %w", err)
+		}
+		resp.Body.Close()
+
+		// メッセージがない場合は終了
+		if len(messages) == 0 {
+			break
+		}
+
+		// メッセージを追加
+		allMessages = append(allMessages, messages...)
+
+		// 最大数に達した場合は終了
+		if maxMessages > 0 && len(allMessages) >= maxMessages {
+			allMessages = allMessages[:maxMessages]
+			break
+		}
+
+		// 100件未満の場合は、これ以上メッセージがないので終了
+		if len(messages) < batchSize {
+			break
+		}
+
+		// 次のページのために最後のメッセージIDを保存
+		beforeID = messages[len(messages)-1].ID
+	}
+
+	return allMessages, nil
+}
