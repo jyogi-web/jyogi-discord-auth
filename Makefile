@@ -1,4 +1,4 @@
-.PHONY: help build run test clean docker-build docker-up docker-down migrate-up migrate-down migrate-create fmt vet
+.PHONY: help build run test clean docker-build docker-up docker-down migrate-up migrate-down migrate-create fmt vet sync-profiles
 
 # デフォルトのヘルプコマンド
 help:
@@ -15,6 +15,10 @@ help:
 	@echo "ローカル コマンド:"
 	@echo "  make build-local    - サーバーをビルド（ローカル）"
 	@echo "  make run-local      - サーバーを起動（ローカル）"
+	@echo ""
+	@echo "プロフィール同期 コマンド:"
+	@echo "  make sync-profiles  - プロフィールを1回同期"
+	@echo "  make sync-profiles-daemon - プロフィールを定期的に同期"
 	@echo ""
 	@echo "Docker コマンド:"
 	@echo "  make docker-build   - Dockerイメージをビルド"
@@ -155,3 +159,21 @@ setup:
 	@echo "  1. Edit .env file with your configuration"
 	@echo "  2. Run 'make migrate-up' to create database schema"
 	@echo "  3. Run 'make run' to start the server"
+
+# プロフィール同期（1回）
+sync-profiles:
+	@echo "🔄 Syncing profiles once..."
+	go run ./cmd/sync-profiles -once
+	@echo "✅ Profile sync complete!"
+
+# プロフィール同期（定期実行）
+sync-profiles-daemon:
+	@echo "🔄 Starting profile sync daemon..."
+	go run ./cmd/sync-profiles
+	@echo "✅ Profile sync daemon stopped!"
+
+# プロフィール同期ビルド
+build-sync-profiles:
+	@echo "🔨 Building sync-profiles..."
+	go build -o bin/sync-profiles ./cmd/sync-profiles
+	@echo "✅ Build complete!"
