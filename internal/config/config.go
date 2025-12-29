@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -25,6 +26,9 @@ type Config struct {
 	// Server
 	ServerPort string
 	HTTPSOnly  bool
+
+	// CORS
+	CORSAllowedOrigins []string
 
 	// Environment
 	Env string
@@ -51,6 +55,7 @@ func Load() (*Config, error) {
 		JWTSecret:           os.Getenv("JWT_SECRET"),
 		DatabasePath:        os.Getenv("DATABASE_PATH"),
 		ServerPort:          os.Getenv("SERVER_PORT"),
+		CORSAllowedOrigins:  parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
 		Env:                 os.Getenv("ENV"),
 	}
 
@@ -74,12 +79,42 @@ func Load() (*Config, error) {
 		cfg.Env = "development"
 	}
 
+	// CORS設定のデフォルト値
+	if len(cfg.CORSAllowedOrigins) == 0 {
+		if cfg.Env == "production" {
+			// 本番環境では明示的な設定を要求
+			return nil, fmt.Errorf("CORS_ALLOWED_ORIGINS must be set in production")
+		} else {
+			// 開発環境はlocalhostを許可
+			cfg.CORSAllowedOrigins = []string{"http://localhost:3000"}
+		}
+	}
+
 	// 必須フィールドを検証
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// parseCORSOrigins はカンマ区切りのオリジンをパースします
+func parseCORSOrigins(origins string) []string {
+	if origins == "" {
+		return nil
+	}
+
+	parts := strings.Split(origins, ",")
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
 }
 
 // Validate は必須設定がすべて存在することを確認します

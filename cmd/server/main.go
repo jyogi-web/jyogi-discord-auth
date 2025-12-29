@@ -109,7 +109,7 @@ func main() {
 	mux.Handle("/api/user", jwtAuthMiddleware(http.HandlerFunc(apiHandler.HandleUser)))
 
 	// ミドルウェアを適用
-	handler := middleware.CORS(mux)
+	handler := middleware.CORS(cfg.CORSAllowedOrigins)(mux)
 	handler = middleware.Logging(handler)
 	handler = middleware.HTTPSOnly(cfg.HTTPSOnly)(handler)
 

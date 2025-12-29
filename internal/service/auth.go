@@ -74,7 +74,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (string, 
 	}
 
 	if !isMember {
-		return "", fmt.Errorf("user is not a member of the guild")
+		return "", domain.ErrNotGuildMember
 	}
 
 	// 4. ユーザーをデータベースに保存または更新

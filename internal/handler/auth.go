@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
+	"github.com/jyogi-web/jyogi-discord-auth/internal/domain"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/service"
 )
 
@@ -31,13 +32,12 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// stateをセッションに保存（Cookieを使用）
-	http.SetCookie(w, &http.Cookie{
+	SetSecureCookie(w, r, CookieOptions{
 		Name:     "oauth_state",
 		Value:    state,
 		Path:     "/",
 		MaxAge:   600, // 10分間有効
 		HttpOnly: true,
-		Secure:   r.TLS != nil, // HTTPS接続の場合のみSecureフラグを設定
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -75,35 +75,28 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// state cookieを削除
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauth_state",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-	})
+	DeleteCookie(w, r, "oauth_state", "/")
 
 	// コールバックを処理してセッションを作成
 	sessionToken, err := h.authService.HandleCallback(r.Context(), code)
 	if err != nil {
 		// じょぎメンバーでない場合
-		if err.Error() == "user is not a member of the guild" {
+		if errors.Is(err, domain.ErrNotGuildMember) {
 			WriteError(w, http.StatusForbidden, "not_guild_member", "You are not a member of the じょぎ server")
 			return
 		}
 
-		WriteError(w, http.StatusInternalServerError, "callback_failed", fmt.Sprintf("Failed to process callback: %v", err))
+		WriteError(w, http.StatusInternalServerError, "callback_failed", "Failed to process authentication callback")
 		return
 	}
 
 	// セッショントークンをCookieに保存
-	http.SetCookie(w, &http.Cookie{
+	SetSecureCookie(w, r, CookieOptions{
 		Name:     "session_token",
 		Value:    sessionToken,
 		Path:     "/",
 		MaxAge:   7 * 24 * 60 * 60, // 7日間
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -130,13 +123,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// セッションCookieを削除
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-	})
+	DeleteCookie(w, r, "session_token", "/")
 
 	WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,

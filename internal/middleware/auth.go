@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/jyogi-web/jyogi-discord-auth/pkg/jwt"
@@ -54,7 +55,13 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 func writeJSONError(w http.ResponseWriter, status int, errorCode, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write([]byte(`{"error":"` + errorCode + `","message":"` + message + `"}`))
+
+	response := map[string]string{
+		"error":   errorCode,
+		"message": message,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetUserClaims はコンテキストからユーザークレームを取得します

@@ -180,12 +180,7 @@ func (s *OAuth2Service) ExchangeToken(ctx context.Context, req *TokenRequest) (*
 		return nil, fmt.Errorf("redirect_uri mismatch")
 	}
 
-	// 4. 認可コードを使用済みにマーク
-	if err := s.authCodeRepo.MarkAsUsed(ctx, req.Code); err != nil {
-		return nil, fmt.Errorf("failed to mark auth code as used: %w", err)
-	}
-
-	// 5. アクセストークンとリフレッシュトークンを生成
+	// 4. アクセストークンとリフレッシュトークンを生成（副作用なし、先に実行）
 	accessToken, err := generateSecureToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
@@ -198,7 +193,7 @@ func (s *OAuth2Service) ExchangeToken(ctx context.Context, req *TokenRequest) (*
 
 	now := time.Now()
 
-	// 6. アクセストークンを保存
+	// 5. アクセストークンを保存
 	accessTokenObj := &domain.Token{
 		ID:        uuid.New().String(),
 		Token:     accessToken,
@@ -213,7 +208,7 @@ func (s *OAuth2Service) ExchangeToken(ctx context.Context, req *TokenRequest) (*
 		return nil, fmt.Errorf("failed to store access token: %w", err)
 	}
 
-	// 7. リフレッシュトークンを保存
+	// 6. リフレッシュトークンを保存
 	refreshTokenObj := &domain.Token{
 		ID:        uuid.New().String(),
 		Token:     refreshToken,
@@ -226,6 +221,11 @@ func (s *OAuth2Service) ExchangeToken(ctx context.Context, req *TokenRequest) (*
 	}
 	if err := s.tokenRepo.Create(ctx, refreshTokenObj); err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
+	// 7. 最後に認可コードを使用済みにマーク
+	if err := s.authCodeRepo.MarkAsUsed(ctx, req.Code); err != nil {
+		return nil, fmt.Errorf("failed to mark auth code as used: %w", err)
 	}
 
 	return &TokenResponse{
