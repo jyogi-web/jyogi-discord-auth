@@ -30,7 +30,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' 
 FROM alpine:latest
 
 # 必要なパッケージをインストール
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget
 
 # 作業ディレクトリを設定
 WORKDIR /app
