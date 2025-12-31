@@ -1,0 +1,77 @@
+services:
+  # アプリケーションサーバー
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # 環境変数は.envファイルから読み込まれます
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_PATH=/app/data/jyogi_auth.db
+      - SERVER_PORT=8080
+      - HTTPS_ONLY=${HTTPS_ONLY:-false}
+      - ENV=${ENV:-development}
+    volumes:
+      # データベースファイルを永続化
+      - db-data:/app/data
+    depends_on:
+      - migrate
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # 開発用コンテナ
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    volumes:
+      - .:/app
+    environment:
+      # 環境変数は.envファイルから読み込まれます
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - JWT_SECRET=${JWT_SECRET}
+      - SERVER_PORT=8080
+      - HTTPS_ONLY=${HTTPS_ONLY:-false}
+      - ENV=test
+      - CGO_ENABLED=1
+    working_dir: /app
+    entrypoint: ["go"]
+
+  # マイグレーション専用コンテナ
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    volumes:
+      - db-data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/jyogi_auth.db
+    restart: on-failure
+
+volumes:
+  # データベースデータを永続化
+  db-data:
+    driver: local
