@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,12 +13,22 @@ import (
 	"github.com/jyogi-web/jyogi-discord-auth/pkg/discord"
 )
 
+// SyncStats はプロフィール同期の統計情報を保持します
+type SyncStats struct {
+	SuccessCount  int
+	SkipCount     int
+	ErrorCount    int
+	TotalMessages int
+}
+
 // ProfileService はプロフィール同期サービスを提供します
 type ProfileService struct {
-	profileRepo repository.ProfileRepository
-	userRepo    repository.UserRepository
-	botToken    string
-	channelID   string
+	profileRepo   repository.ProfileRepository
+	userRepo      repository.UserRepository
+	botToken      string
+	channelID     string
+	lastSyncStats SyncStats
+	mu            sync.RWMutex
 }
 
 // NewProfileService は新しいProfileServiceを作成します
@@ -115,6 +126,16 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 
 	log.Printf("Profile synchronization completed: %d success, %d skipped, %d errors", successCount, skipCount, errorCount)
 
+	// 統計情報を保存
+	s.mu.Lock()
+	s.lastSyncStats = SyncStats{
+		SuccessCount:  successCount,
+		SkipCount:     skipCount,
+		ErrorCount:    errorCount,
+		TotalMessages: len(messages),
+	}
+	s.mu.Unlock()
+
 	return nil
 }
 
@@ -126,4 +147,11 @@ func (s *ProfileService) GetProfileByUserID(ctx context.Context, userID string) 
 // GetAllProfiles は全てのプロフィールを取得します
 func (s *ProfileService) GetAllProfiles(ctx context.Context) ([]*domain.Profile, error) {
 	return s.profileRepo.GetAll(ctx)
+}
+
+// GetLastSyncStats は最後の同期の統計情報を取得します
+func (s *ProfileService) GetLastSyncStats() SyncStats {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.lastSyncStats
 }
