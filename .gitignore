@@ -25,6 +25,8 @@ coverage.html
 .env
 .env.local
 .env.*.local
+.env.yaml
+.env.*.yaml
 
 # Database files
 *.db
@@ -66,3 +68,8 @@ temp/
 
 # Application specific
 jyogi_auth.db
+
+# Deployment artifacts
+function.zip
+bootstrap
+*.zip

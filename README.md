@@ -19,13 +19,14 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 - **JWT発行**: 認証成功後、アクセストークン（JWT）を発行
 - **SSO対応**: 他の内製ツールがこの認証サーバーを利用可能
 - **セッション管理**: ユーザーのログイン状態を管理
+- **プロフィール同期**: Discord自己紹介チャンネルから自動的にメンバープロフィールを取得・更新
 
 ## 技術スタック
 
 - **言語**: Go 1.23+
 - **データベース**: SQLite（将来PostgreSQLへの移行可能な設計）
 - **認証**: Discord OAuth2, JWT
-- **デプロイ**: 低コストクラウドサービス（Fly.io, Railway, 低価格VPS等）
+- **デプロイ**: Google Cloud Functions（推奨）、Railway
 
 ## 前提条件
 
@@ -62,6 +63,8 @@ cp .env.example .env
 - `DISCORD_CLIENT_SECRET`: Discord Developer Portalで取得したClient Secret
 - `DISCORD_REDIRECT_URI`: OAuth2リダイレクトURI（開発環境では`http://localhost:8080/auth/callback`）
 - `DISCORD_GUILD_ID`: じょぎDiscordサーバーのサーバーID
+- `DISCORD_BOT_TOKEN`: Discord Botトークン（プロフィール同期用）
+- `DISCORD_PROFILE_CHANNEL`: 自己紹介チャンネルID
 - `JWT_SECRET`: JWT署名用の秘密鍵（最低32文字）
 
 ### 4. データベースのマイグレーション
@@ -154,6 +157,12 @@ make migrate-down
 
 # 新しいマイグレーション作成
 make migrate-create NAME=add_users_table
+
+# プロフィール同期（1回のみ）
+make sync-profiles
+
+# プロフィール同期（定期実行）
+make sync-profiles-daemon
 ```
 
 ### golang-migrateを使ったマイグレーション管理
@@ -163,17 +172,20 @@ make migrate-create NAME=add_users_table
 #### インストール
 
 **macOS:**
+
 ```bash
 brew install golang-migrate
 ```
 
 **Linux:**
+
 ```bash
 curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
 sudo mv migrate /usr/local/bin/
 ```
 
 **Go install:**
+
 ```bash
 go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ```
@@ -223,21 +235,110 @@ go test ./...
 go test -cover ./...
 ```
 
+## プロフィール同期機能
+
+Discord自己紹介チャンネルからメンバーのプロフィール情報を自動的に取得・保存する機能を提供します。
+
+### セットアップ
+
+1. Discord Developer Portalでボットを作成
+2. 以下の権限を付与:
+   - `Read Messages/View Channels`
+   - `Read Message History`
+3. ボットトークンを`.env`の`DISCORD_BOT_TOKEN`に設定
+4. 自己紹介チャンネルIDを`.env`の`DISCORD_PROFILE_CHANNEL`に設定
+
+### 使用方法
+
+#### 1回だけ実行（手動同期）
+
+```bash
+make sync-profiles
+```
+
+または:
+
+```bash
+go run ./cmd/sync-profiles -once
+```
+
+#### 定期実行（デーモンモード）
+
+```bash
+# デフォルト: 60分間隔
+make sync-profiles-daemon
+```
+
+または:
+
+```bash
+# カスタム間隔（例: 30分間隔）
+go run ./cmd/sync-profiles -interval 30
+```
+
+### サポートするプロフィールフォーマット
+
+以下のフォーマットのメッセージを自動的にパースします:
+
+```
+⭕本名: じょぎ太郎
+⭕学籍番号: 2XA1234
+⭕趣味: ゲーム、アニメ鑑賞
+⭕じょぎでやりたいこと: ゲーム作成
+⭕ひとこと: よろしくお願いします！
+```
+
+記号の有無、全角・半角コロン、スペースなど、様々なフォーマットに対応しています。
+
+### サーバーレスFunctionとしてデプロイ（推奨）
+
+プロフィール同期をGoogle Cloud FunctionsやAWS Lambdaなどのサーバーレス環境にデプロイして、cronで定期実行できます。
+
+詳細は [docs/deployment-functions.md](docs/deployment-functions.md) を参照してください。
+
+#### クイックスタート（Google Cloud Functions）
+
+```bash
+cd deployments/cloud-functions
+
+# 環境変数を設定
+cp .env.yaml.example .env.yaml
+# .env.yamlを編集
+
+# デプロイ
+./deploy.sh
+
+# Cloud Schedulerをセットアップ（cronで毎時実行）
+./setup-scheduler.sh
+```
+
+#### 対応プラットフォーム
+
+- **Google Cloud Functions** - 推奨、無料枠が大きい
+- **AWS Lambda** - EventBridgeでcron実行
+- **Docker** - 任意のクラウドプロバイダーで実行可能
+
 ## プロジェクト構造
 
 ```
 jyogi-discord-auth/
 ├── cmd/
-│   └── server/          # エントリーポイント
+│   ├── server/          # メインサーバーエントリーポイント
+│   ├── sync-profiles/   # プロフィール同期ツール（CLI）
+│   └── sync-profiles-fn/ # プロフィール同期Function（HTTP）
+├── deployments/
+│   ├── cloud-functions/ # Google Cloud Functions設定
+│   └── aws-lambda/      # AWS Lambda設定
 ├── internal/
-│   ├── domain/          # ドメインモデル
+│   ├── domain/          # ドメインモデル（User, Profile, Session, etc.）
 │   ├── repository/      # データアクセス層
 │   ├── service/         # ビジネスロジック
 │   ├── handler/         # HTTPハンドラー
 │   ├── middleware/      # HTTPミドルウェア
 │   └── config/          # 設定管理
 ├── pkg/
-│   ├── discord/         # Discord APIクライアント
+│   ├── discord/         # Discord APIクライアント、プロフィールパーサー
+│   ├── auth/            # クライアント認証
 │   └── jwt/             # JWTユーティリティ
 ├── web/
 │   ├── templates/       # HTMLテンプレート
@@ -249,14 +350,40 @@ jyogi-discord-auth/
 
 ## デプロイ
 
-### Fly.io へのデプロイ
+### Google Cloud Functions へのデプロイ（推奨）
+
+**メインサーバー（認証API）**:
+
+- Cloud Run等のコンテナサービスを推奨（詳細は今後追加予定）
+
+**プロフィール同期のサーバーレスデプロイ**:
+
+```bash
+cd deployments/cloud-functions
+
+# 環境変数を設定
+cp .env.yaml.example .env.yaml
+# .env.yamlを編集
+
+# デプロイ
+./deploy.sh
+
+# Cloud Schedulerをセットアップ（cronで毎時実行）
+./setup-scheduler.sh
+```
+
+詳細は [deployments/cloud-functions/README.md](deployments/cloud-functions/README.md) を参照してください。
+
+### その他のデプロイ先
+
+**Fly.io へのデプロイ**:
 
 ```bash
 fly launch
 fly deploy
 ```
 
-### Railway へのデプロイ
+**Railway へのデプロイ**:
 
 ```bash
 railway init

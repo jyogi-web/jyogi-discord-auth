@@ -39,7 +39,7 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 
 **Constraints**:
 
-- 低コスト運用（月額$5-10程度、Fly.io/Railway/低価格VPS等のクラウドサービス利用）
+- 低コスト運用（月額$5-10程度、Google Cloud Functions/Cloud Run推奨、またはFly.io/Railway等のクラウドサービス利用）
 - 200~500ユーザー規模
 - 同時接続10~50人想定
 
