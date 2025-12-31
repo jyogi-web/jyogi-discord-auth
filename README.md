@@ -26,7 +26,7 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 - **言語**: Go 1.23+
 - **データベース**: SQLite（将来PostgreSQLへの移行可能な設計）
 - **認証**: Discord OAuth2, JWT
-- **デプロイ**: 低コストクラウドサービス（Fly.io, Railway, 低価格VPS等）
+- **デプロイ**: Google Cloud Functions（推奨）、Railway
 
 ## 前提条件
 
@@ -350,14 +350,40 @@ jyogi-discord-auth/
 
 ## デプロイ
 
-### Fly.io へのデプロイ
+### Google Cloud Functions へのデプロイ（推奨）
+
+**メインサーバー（認証API）**:
+
+- Cloud Run等のコンテナサービスを推奨（詳細は今後追加予定）
+
+**プロフィール同期のサーバーレスデプロイ**:
+
+```bash
+cd deployments/cloud-functions
+
+# 環境変数を設定
+cp .env.yaml.example .env.yaml
+# .env.yamlを編集
+
+# デプロイ
+./deploy.sh
+
+# Cloud Schedulerをセットアップ（cronで毎時実行）
+./setup-scheduler.sh
+```
+
+詳細は [deployments/cloud-functions/README.md](deployments/cloud-functions/README.md) を参照してください。
+
+### その他のデプロイ先
+
+**Fly.io へのデプロイ**:
 
 ```bash
 fly launch
 fly deploy
 ```
 
-### Railway へのデプロイ
+**Railway へのデプロイ**:
 
 ```bash
 railway init
