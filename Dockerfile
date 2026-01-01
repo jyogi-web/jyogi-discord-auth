@@ -30,7 +30,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' 
 FROM alpine:latest
 
 # 必要なパッケージをインストール
-RUN apk --no-cache add ca-certificates tzdata wget
+RUN apk --no-cache add ca-certificates tzdata wget sqlite bash
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -38,11 +38,16 @@ WORKDIR /app
 # ビルドステージからバイナリをコピー
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrations ./migrations
+COPY scripts ./scripts
+
+# スクリプトに実行権限を付与
+RUN chmod +x ./scripts/*.sh
 
 # 非rootユーザーを作成
 RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /app
+  adduser -D -u 1000 -G appuser appuser && \
+  mkdir -p /app/data && \
+  chown -R appuser:appuser /app
 
 # 非rootユーザーに切り替え
 USER appuser

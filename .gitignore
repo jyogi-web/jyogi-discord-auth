@@ -27,6 +27,7 @@ coverage.html
 .env.*.local
 .env.yaml
 .env.*.yaml
+.env.deploy
 
 # Database files
 *.db
