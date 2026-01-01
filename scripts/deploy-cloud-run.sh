@@ -28,7 +28,7 @@ REGION="${GCP_REGION:-asia-northeast1}"
 SERVICE_NAME="jyogi-auth"
 
 # 環境変数チェック
-echo -e "${YELLOW}[1/6] 環境変数チェック${NC}"
+echo -e "${YELLOW}[1/7] 環境変数チェック${NC}"
 if [ "$PROJECT_ID" = "your-gcp-project-id" ]; then
     echo -e "${RED}エラー: GCP_PROJECT_ID 環境変数を設定してください${NC}"
     echo "例: export GCP_PROJECT_ID=your-project-id"
@@ -65,7 +65,7 @@ echo -e "${GREEN}✓ 全ての環境変数が設定されています${NC}"
 echo ""
 
 # GCPプロジェクト設定
-echo -e "${YELLOW}[2/6] GCPプロジェクト設定${NC}"
+echo -e "${YELLOW}[2/7] GCPプロジェクト設定${NC}"
 gcloud config set project "$PROJECT_ID"
 echo -e "${GREEN}✓ プロジェクト: $PROJECT_ID${NC}"
 echo ""
