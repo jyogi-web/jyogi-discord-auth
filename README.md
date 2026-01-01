@@ -26,7 +26,7 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 - **言語**: Go 1.23+
 - **データベース**: SQLite（将来PostgreSQLへの移行可能な設計）
 - **認証**: Discord OAuth2, JWT
-- **デプロイ**: Google Cloud Functions（推奨）、Railway
+- **デプロイ**: Google Cloud Run（認証サーバー）、Google Cloud Functions（プロフィール同期）
 
 ## 前提条件
 
@@ -350,13 +350,35 @@ jyogi-discord-auth/
 
 ## デプロイ
 
-### Google Cloud Functions へのデプロイ（推奨）
+### Google Cloud Run へのデプロイ（認証サーバー・推奨）
 
-**メインサーバー（認証API）**:
+**Phase 1**: 認証機能のみをデプロイ（プロフィール同期は後回し）
 
-- Cloud Run等のコンテナサービスを推奨（詳細は今後追加予定）
+```bash
+# 環境変数を設定
+export GCP_PROJECT_ID="your-project-id"
+export DISCORD_CLIENT_ID="your-client-id"
+export DISCORD_CLIENT_SECRET="your-client-secret"
+export DISCORD_REDIRECT_URI="https://YOUR_SERVICE_URL/auth/callback"
+export DISCORD_GUILD_ID="your-guild-id"
+export JWT_SECRET=$(openssl rand -base64 32)
+export CORS_ALLOWED_ORIGINS="https://your-app.com"
 
-**プロフィール同期のサーバーレスデプロイ**:
+# デプロイスクリプトを実行
+./scripts/deploy-cloud-run.sh
+```
+
+**特徴**:
+- ✅ **完全無料**（無料枠内で運用可能）
+- ✅ **最小インスタンス = 0**（アクセスなし時は完全に0円）
+- ✅ **自動スケーリング**
+- ✅ **HTTPS デフォルト**
+
+詳細な手順は [docs/deployment-cloud-run.md](docs/deployment-cloud-run.md) を参照してください。
+
+### Google Cloud Functions へのデプロイ（プロフィール同期）
+
+**Phase 2**: プロフィール同期機能をCloud Functionsにデプロイ（Phase 1の認証機能デプロイ後）
 
 ```bash
 cd deployments/cloud-functions
@@ -383,14 +405,7 @@ fly launch
 fly deploy
 ```
 
-**Railway へのデプロイ**:
-
-```bash
-railway init
-railway up
-```
-
-詳細なデプロイ手順は [docs/deployment.md](docs/deployment.md) を参照してください。
+**注意**: Railwayは2023年から無料プランが廃止されたため、推奨しません。
 
 ## API エンドポイント
 

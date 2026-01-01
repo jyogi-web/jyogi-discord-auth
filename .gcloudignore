@@ -1,0 +1,55 @@
+# Git関連
+.git
+.gitignore
+.github
+
+# 環境ファイル
+.env
+.env.*
+*.env
+
+# データベースファイル
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# ログファイル
+*.log
+logs/
+
+# テストファイル
+*_test.go
+test/
+tests/
+coverage.out
+
+# ドキュメント
+docs/
+*.md
+!README.md
+
+# Claude Code関連
+.claude/
+
+# IDE設定
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# Node.js（使用していないが念のため）
+node_modules/
+
+# 開発用ファイル
+docker-compose.yml
+Makefile
+
+# Spec Kit関連
+specs/
+.specify/

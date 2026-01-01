@@ -1,5 +1,5 @@
 # 開発ステージ
-FROM golang:1.23-alpine AS dev
+FROM golang:1.25-alpine AS dev
 WORKDIR /app
 RUN apk add --no-cache git build-base gcc musl-dev sqlite-dev
 COPY go.mod go.sum ./
@@ -8,7 +8,7 @@ COPY . .
 ENTRYPOINT ["go"]
 
 # マルチステージビルド: ビルドステージ
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # 必要なパッケージをインストール（SQLiteビルドに必要なgccとmusl-devを追加）
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
