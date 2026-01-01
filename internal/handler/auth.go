@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -86,6 +87,8 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// エラー内容をログに出力
+		log.Printf("Callback error: %v", err)
 		WriteError(w, http.StatusInternalServerError, "callback_failed", "Failed to process authentication callback")
 		return
 	}
