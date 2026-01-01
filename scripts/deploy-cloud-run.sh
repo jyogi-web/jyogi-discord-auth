@@ -8,15 +8,24 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+echo -e "${GREEN}=== じょぎメンバー認証システム Cloud Run デプロイ ===${NC}"
+echo ""
+
+# .envファイルから環境変数を読み込む
+if [ -f .env ]; then
+    echo -e "${BLUE}📄 .envファイルから環境変数を読み込んでいます...${NC}"
+    export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
+    echo -e "${GREEN}✓ .envファイルを読み込みました${NC}"
+    echo ""
+fi
 
 # プロジェクト設定
 PROJECT_ID="${GCP_PROJECT_ID:-your-gcp-project-id}"
 REGION="${GCP_REGION:-asia-northeast1}"
 SERVICE_NAME="jyogi-auth"
-
-echo -e "${GREEN}=== じょぎメンバー認証システム Cloud Run デプロイ ===${NC}"
-echo ""
 
 # 環境変数チェック
 echo -e "${YELLOW}[1/6] 環境変数チェック${NC}"
