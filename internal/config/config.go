@@ -18,8 +18,8 @@ type Config struct {
 	DiscordGuildID      string
 
 	// Discord Bot
-	DiscordBotToken        string
-	DiscordProfileChannel  string
+	DiscordBotToken       string
+	DiscordProfileChannel string
 
 	// JWT
 	JWTSecret string
@@ -52,17 +52,17 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DiscordClientID:     os.Getenv("DISCORD_CLIENT_ID"),
-		DiscordClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
-		DiscordRedirectURI:  os.Getenv("DISCORD_REDIRECT_URI"),
-		DiscordGuildID:      os.Getenv("DISCORD_GUILD_ID"),
-		DiscordBotToken:     os.Getenv("DISCORD_BOT_TOKEN"),
+		DiscordClientID:       os.Getenv("DISCORD_CLIENT_ID"),
+		DiscordClientSecret:   os.Getenv("DISCORD_CLIENT_SECRET"),
+		DiscordRedirectURI:    os.Getenv("DISCORD_REDIRECT_URI"),
+		DiscordGuildID:        os.Getenv("DISCORD_GUILD_ID"),
+		DiscordBotToken:       os.Getenv("DISCORD_BOT_TOKEN"),
 		DiscordProfileChannel: os.Getenv("DISCORD_PROFILE_CHANNEL"),
-		JWTSecret:           os.Getenv("JWT_SECRET"),
-		DatabasePath:        os.Getenv("DATABASE_PATH"),
-		ServerPort:          os.Getenv("SERVER_PORT"),
-		CORSAllowedOrigins:  parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
-		Env:                 os.Getenv("ENV"),
+		JWTSecret:             os.Getenv("JWT_SECRET"),
+		DatabasePath:          os.Getenv("DATABASE_PATH"),
+		ServerPort:            os.Getenv("SERVER_PORT"),
+		CORSAllowedOrigins:    parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
+		Env:                   os.Getenv("ENV"),
 	}
 
 	// HTTPS_ONLYをbooleanとしてパース
@@ -110,7 +110,10 @@ func parseCORSOrigins(origins string) []string {
 		return nil
 	}
 
-	parts := strings.Split(origins, ",")
+	// カンマまたはセミコロンで区切られたオリジンをパース
+	// gcloudコマンドではカンマが区切り文字として扱われるため、セミコロンもサポートする
+	normalized := strings.ReplaceAll(origins, ";", ",")
+	parts := strings.Split(normalized, ",")
 	result := make([]string, 0, len(parts))
 
 	for _, part := range parts {
