@@ -62,9 +62,16 @@ func (r *authCodeRepository) MarkAsUsed(ctx context.Context, code string) error 
 
 // DeleteExpired は期限切れの認可コードを削除します
 func (r *authCodeRepository) DeleteExpired(ctx context.Context) error {
-	result := r.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&AuthCode{})
+	now := time.Now()
+	result := r.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&AuthCode{})
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete expired auth codes: %w", result.Error)
 	}
+
+	// 削除件数をログに記録（運用性向上）
+	if result.RowsAffected > 0 {
+		fmt.Printf("Deleted %d expired auth code(s) (before %v)\n", result.RowsAffected, now)
+	}
+
 	return nil
 }

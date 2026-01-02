@@ -23,17 +23,25 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		cfg.TiDBDatabase,
 	)
 
-	// カスタムロガー設定: RecordNotFound エラーを無視し、エラーのみ出力する
+	// 環境に応じたログレベルを設定
+	logLevel := logger.Error
+	if cfg.Env == "development" {
+		logLevel = logger.Info // 開発環境ではSQL文も出力
+	}
+
+	// カスタムロガー設定: RecordNotFound エラーを無視
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
-			SlowThreshold:             time.Second,  // Slow SQL threshold
-			LogLevel:                  logger.Error, // Log level
-			IgnoreRecordNotFoundError: true,         // Ignore ErrRecordNotFound error for logger
-			ParameterizedQueries:      false,        // Don't include params in the SQL log (set to true to hide params)
-			Colorful:                  false,        // Disable color
+			SlowThreshold:             time.Second, // Slow SQL threshold
+			LogLevel:                  logLevel,    // Log level (環境別)
+			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
+			ParameterizedQueries:      false,       // Don't include params in the SQL log (set to true to hide params)
+			Colorful:                  false,       // Disable color
 		},
 	)
+
+	log.Printf("GORM logger configured with level: %v, SlowThreshold: %v", logLevel, time.Second)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: newLogger,

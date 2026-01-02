@@ -77,9 +77,16 @@ func (r *tokenRepository) Revoke(ctx context.Context, token string) error {
 
 // DeleteExpired は期限切れのトークンを削除します
 func (r *tokenRepository) DeleteExpired(ctx context.Context) error {
-	result := r.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&Token{})
+	now := time.Now()
+	result := r.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&Token{})
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete expired tokens: %w", result.Error)
 	}
+
+	// 削除件数をログに記録（運用性向上）
+	if result.RowsAffected > 0 {
+		fmt.Printf("Deleted %d expired token(s) (before %v)\n", result.RowsAffected, now)
+	}
+
 	return nil
 }
