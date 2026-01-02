@@ -39,23 +39,27 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		Logger: newLogger,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to TiDB: %w", err)
+		log.Printf("Failed to connect to TiDB %s@%s:%s/%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
+		return nil, fmt.Errorf("failed to connect to TiDB %s@%s:%s/%s: %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
 	}
 
 	// コネクションプール設定（sql.DBを取得して設定）
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
+		log.Printf("Failed to get sql.DB from GORM for TiDB %s@%s:%s/%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
+		return nil, fmt.Errorf("failed to get sql.DB from GORM (TiDB: %s@%s:%s/%s): %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
 	}
 	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
-	// マイグレーションはここで行わず、呼び出し元（特にserver）で明示的に行うか、
-	// あるいはここでモデルへの依存を持たせるか検討が必要。
-	// 循環参照を避けるため、AutoMigrateは呼び出し元で行うのが無難だが、
-	// repositories/gormパッケージ内なので、ここで行っても循環参照にはならない（モデルはこのパッケージ内）。
-	// 簡便のため、ここでAutoMigrateを行うようにする。
+	// AutoMigrate実行
+	log.Printf("Starting AutoMigrate for TiDB %s@%s:%s/%s",
+		cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
 
 	if err := db.AutoMigrate(
 		&User{},
@@ -65,8 +69,18 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		&Token{},
 		&Profile{},
 	); err != nil {
-		return nil, fmt.Errorf("failed to migrate schema: %w", err)
+		// マイグレーション失敗時、DB接続をクローズしてリソースリークを防ぐ
+		if sqlDB, dbErr := db.DB(); dbErr == nil {
+			sqlDB.Close()
+		}
+		log.Printf("AutoMigrate failed for TiDB %s@%s:%s/%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
+		return nil, fmt.Errorf("failed to migrate schema for TiDB %s@%s:%s/%s: %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
 	}
+
+	log.Printf("AutoMigrate completed successfully for TiDB %s@%s:%s/%s",
+		cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
 
 	log.Printf("TiDB initialized: %s@%s:%s/%s", cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
 

@@ -49,11 +49,13 @@ func (r *sessionRepository) GetByID(ctx context.Context, id string) (*domain.Ses
 }
 
 // GetByToken はトークンでセッションを取得します
+// 期限切れのセッションは見つからなかったものとして扱います（SQLite実装との互換性のため）
 func (r *sessionRepository) GetByToken(ctx context.Context, token string) (*domain.Session, error) {
 	var s Session
-	if err := r.db.WithContext(ctx).Where("token = ?", token).First(&s).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("token = ? AND expires_at > ?", token, time.Now()).First(&s).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("session not found by token")
+			// SQLite実装との互換性のため、nil, nilを返す
+			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get session by token: %w", err)
 	}
@@ -89,23 +91,28 @@ func (r *sessionRepository) Delete(ctx context.Context, id string) error {
 }
 
 // DeleteByToken はトークンでセッションを削除します
+// SQLite実装との互換性のため、削除対象が存在しない場合もエラーを返しません
 func (r *sessionRepository) DeleteByToken(ctx context.Context, token string) error {
 	result := r.db.WithContext(ctx).Delete(&Session{}, "token = ?", token)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete session by token: %w", result.Error)
 	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("session not found by token")
-	}
+	// SQLite実装との互換性のため、RowsAffected == 0 でもエラーを返さない
 	return nil
 }
 
 // DeleteExpired は期限切れのセッションをすべて削除します
 func (r *sessionRepository) DeleteExpired(ctx context.Context) error {
-	// 期限切れかつ、expires_atが現在時刻より前のレコードを削除
-	result := r.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&Session{})
+	now := time.Now()
+	result := r.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&Session{})
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete expired sessions: %w", result.Error)
 	}
+
+	// 削除件数をログに記録（運用性向上）
+	if result.RowsAffected > 0 {
+		fmt.Printf("Deleted %d expired session(s) (before %v)\n", result.RowsAffected, now)
+	}
+
 	return nil
 }
