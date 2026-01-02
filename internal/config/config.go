@@ -28,11 +28,12 @@ type Config struct {
 	DatabasePath string
 
 	// TiDB
-	TiDBHost     string
-	TiDBPort     string
-	TiDBUser     string
-	TiDBPassword string
-	TiDBDatabase string
+	TiDBHost       string
+	TiDBPort       string
+	TiDBUser       string
+	TiDBPassword   string
+	TiDBDatabase   string
+	TiDBDisableTLS bool
 
 	// Server
 	ServerPort string
@@ -84,6 +85,15 @@ func Load() (*Config, error) {
 		cfg.HTTPSOnly = false
 	} else {
 		cfg.HTTPSOnly = httpsOnly
+	}
+
+	// TIDB_DISABLE_TLSをbooleanとしてパース
+	disableTLS, err := strconv.ParseBool(os.Getenv("TIDB_DISABLE_TLS"))
+	if err != nil {
+		// 設定されていないか不正な場合はfalseをデフォルトとする（TLS有効）
+		cfg.TiDBDisableTLS = false
+	} else {
+		cfg.TiDBDisableTLS = disableTLS
 	}
 
 	// デフォルト値を設定

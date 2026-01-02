@@ -76,9 +76,14 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 		// Discord IDでユーザーを検索または作成
 		user, err := s.userRepo.GetByDiscordID(ctx, msg.Author.ID)
 		if err != nil {
-			log.Printf("Error getting user by discord_id %s: %v", msg.Author.ID, err)
-			errorCount++
-			continue
+			// ユーザーが見つからない場合は新規作成
+			if err.Error() == fmt.Sprintf("user not found: %s", msg.Author.ID) {
+				user = nil
+			} else {
+				log.Printf("Error getting user by discord_id %s: %v", msg.Author.ID, err)
+				errorCount++
+				continue
+			}
 		}
 
 		// ユーザーが存在しない場合は作成

@@ -106,9 +106,9 @@ func TestUserRepository_GetByDiscordID_NotFound(t *testing.T) {
 	// 存在しないDiscordIDで取得
 	retrieved, err := repo.GetByDiscordID(ctx, "non-existent-discord-id")
 
-	// SQLite実装との互換性（nil, nilを返すべき）
-	if err != nil {
-		t.Errorf("Expected nil error for non-existent discord_id, got: %v", err)
+	// SQLite実装との互換性（nil, nilを返すべき） -> 変更: エラーを返すように変更
+	if err == nil {
+		t.Error("Expected error for non-existent discord_id, got nil")
 	}
 
 	if retrieved != nil {

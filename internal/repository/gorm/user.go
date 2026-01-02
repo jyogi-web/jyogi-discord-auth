@@ -52,7 +52,7 @@ func (r *userRepository) GetByDiscordID(ctx context.Context, discordID string) (
 	var u User
 	if err := r.db.WithContext(ctx).Where("discord_id = ?", discordID).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Return nil, nil if user not found (not an error, consistent with sqlite impl)
+			return nil, fmt.Errorf("user not found: %s", discordID)
 		}
 		return nil, fmt.Errorf("failed to get user by discord_id: %w", err)
 	}

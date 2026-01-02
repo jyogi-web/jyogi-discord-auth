@@ -15,12 +15,18 @@ import (
 
 // InitDB はTiDBデータベース接続を初期化します
 func InitDB(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true",
+	tlsConfig := "true"
+	if cfg.TiDBDisableTLS {
+		tlsConfig = "false"
+	}
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
 		cfg.TiDBUser,
 		cfg.TiDBPassword,
 		cfg.TiDBHost,
 		cfg.TiDBPort,
 		cfg.TiDBDatabase,
+		tlsConfig,
 	)
 
 	// 環境に応じたログレベルを設定

@@ -54,8 +54,7 @@ func (r *sessionRepository) GetByToken(ctx context.Context, token string) (*doma
 	var s Session
 	if err := r.db.WithContext(ctx).Where("token = ? AND expires_at > ?", token, time.Now()).First(&s).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// SQLite実装との互換性のため、nil, nilを返す
-			return nil, nil
+			return nil, fmt.Errorf("session not found")
 		}
 		return nil, fmt.Errorf("failed to get session by token: %w", err)
 	}
