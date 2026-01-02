@@ -1,7 +1,7 @@
 # 開発ステージ
 FROM golang:1.25-alpine AS dev
 WORKDIR /app
-RUN apk add --no-cache git build-base gcc musl-dev sqlite-dev
+RUN apk add --no-cache git build-base
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
@@ -10,8 +10,8 @@ ENTRYPOINT ["go"]
 # マルチステージビルド: ビルドステージ
 FROM golang:1.25-alpine AS builder
 
-# 必要なパッケージをインストール（SQLiteビルドに必要なgccとmusl-devを追加）
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
+# 必要なパッケージをインストール
+RUN apk add --no-cache git ca-certificates tzdata
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -23,21 +23,23 @@ RUN go mod download
 # ソースコードをコピー
 COPY . .
 
-# バイナリをビルド（CGO有効でSQLiteサポート）
-RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' -tags 'osusergo netgo sqlite_omit_load_extension' -o server ./cmd/server
+# バイナリをビルド（CGO無効化で完全静的リンク）
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' -tags 'osusergo netgo' -o server ./cmd/server
 
 # 本番ステージ: 軽量なイメージ
 FROM alpine:latest
 
-# 必要なパッケージをインストール
-RUN apk --no-cache add ca-certificates tzdata wget sqlite bash
+# 必要なパッケージをインストール（MySQLクライアントはデバッグ用に便利だが必須ではない。sqliteは削除）
+RUN apk --no-cache add ca-certificates tzdata wget bash
 
 # 作業ディレクトリを設定
 WORKDIR /app
 
 # ビルドステージからバイナリをコピー
 COPY --from=builder /app/server .
-COPY --from=builder /app/migrations ./migrations
+# migrationsディレクトリはAutoMigrateを使うので不要だが、参照用にあると便利かもしれない。
+# しかし、main.goで埋め込まれていない限りバイナリからは読めない。GORM AutoMigrateはコード定義から生成するのでSQLファイルは不要。
+# 念のためscriptsだけコピー
 COPY scripts ./scripts
 
 # スクリプトに実行権限を付与
@@ -46,7 +48,6 @@ RUN chmod +x ./scripts/*.sh
 # 非rootユーザーを作成
 RUN addgroup -g 1000 appuser && \
   adduser -D -u 1000 -G appuser appuser && \
-  mkdir -p /app/data && \
   chown -R appuser:appuser /app
 
 # 非rootユーザーに切り替え
