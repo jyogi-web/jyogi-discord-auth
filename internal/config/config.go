@@ -27,6 +27,14 @@ type Config struct {
 	// Database
 	DatabasePath string
 
+	// TiDB
+	TiDBHost       string
+	TiDBPort       string
+	TiDBUser       string
+	TiDBPassword   string
+	TiDBDatabase   string
+	TiDBDisableTLS bool
+
 	// Server
 	ServerPort string
 	HTTPSOnly  bool
@@ -60,6 +68,11 @@ func Load() (*Config, error) {
 		DiscordProfileChannel: os.Getenv("DISCORD_PROFILE_CHANNEL"),
 		JWTSecret:             os.Getenv("JWT_SECRET"),
 		DatabasePath:          os.Getenv("DATABASE_PATH"),
+		TiDBHost:              os.Getenv("TIDB_DB_HOST"),
+		TiDBPort:              os.Getenv("TIDB_DB_PORT"),
+		TiDBUser:              os.Getenv("TIDB_DB_USERNAME"),
+		TiDBPassword:          os.Getenv("TIDB_DB_PASSWORD"),
+		TiDBDatabase:          os.Getenv("TIDB_DB_DATABASE"),
 		ServerPort:            os.Getenv("SERVER_PORT"),
 		CORSAllowedOrigins:    parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
 		Env:                   os.Getenv("ENV"),
@@ -74,9 +87,21 @@ func Load() (*Config, error) {
 		cfg.HTTPSOnly = httpsOnly
 	}
 
+	// TIDB_DISABLE_TLSをbooleanとしてパース
+	disableTLS, err := strconv.ParseBool(os.Getenv("TIDB_DISABLE_TLS"))
+	if err != nil {
+		// 設定されていないか不正な場合はfalseをデフォルトとする（TLS有効）
+		cfg.TiDBDisableTLS = false
+	} else {
+		cfg.TiDBDisableTLS = disableTLS
+	}
+
 	// デフォルト値を設定
 	if cfg.DatabasePath == "" {
 		cfg.DatabasePath = "./jyogi_auth.db"
+	}
+	if cfg.TiDBPort == "" {
+		cfg.TiDBPort = "4000"
 	}
 	if cfg.ServerPort == "" {
 		cfg.ServerPort = "8080"
@@ -145,6 +170,21 @@ func (c *Config) Validate() error {
 	}
 	if len(c.JWTSecret) < 32 {
 		return fmt.Errorf("JWT_SECRET must be at least 32 characters long")
+	}
+
+	// TiDBの設定バリデーション
+	// 環境変数が設定されていない場合はエラーにする（移行のため必須）
+	if c.TiDBHost == "" {
+		return fmt.Errorf("TIDB_DB_HOST is required")
+	}
+	if c.TiDBUser == "" {
+		return fmt.Errorf("TIDB_DB_USERNAME is required")
+	}
+	if c.TiDBPassword == "" {
+		return fmt.Errorf("TIDB_DB_PASSWORD is required")
+	}
+	if c.TiDBDatabase == "" {
+		return fmt.Errorf("TIDB_DB_DATABASE is required")
 	}
 
 	return nil

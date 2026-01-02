@@ -96,8 +96,20 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (string, 
 func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User, token *oauth2.Token) (*domain.User, error) {
 	// 既存のユーザーを検索
 	existingUser, err := s.userRepo.GetByDiscordID(ctx, discordUser.ID)
+	// エラーが発生した場合、ユーザーが見つからない場合以外はエラーを返す
+	// 今回の変更でGetByDiscordIDはユーザーが見つからない場合にエラーを返すようになったので、
+	// エラーの内容を確認する必要があるが、簡易的にエラーがあれば新規作成とみなす実装にはできない。
+	// エラーの種類を判別するか、エラーメッセージで判断する必要があるが、
+	// GORMの実装では fmt.Errorf("user not found: %s", discordID) を返している。
+	// 厳密にはエラータイプを定義すべきだが、ここではエラーがあれば新規ユーザー作成フローに進むようにする（要検討）
+	// ただし、DB接続エラーなども含まれるため、本来はエラータイプを確認すべき。
+	// ここでは、"user not found" を含むエラーの場合は新規作成、それ以外はエラーとする。
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user by discord_id: %w", err)
+		if err.Error() == fmt.Sprintf("user not found: %s", discordUser.ID) {
+			existingUser = nil
+		} else {
+			return nil, fmt.Errorf("failed to get user by discord_id: %w", err)
+		}
 	}
 
 	now := time.Now()
@@ -168,6 +180,10 @@ func (s *AuthService) GetUserBySessionToken(ctx context.Context, sessionToken st
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
 
+	// session is already checked for error above, if GetByToken returns error for not found,
+	// err check handles it. If it returns valid session, session is not nil.
+	// So we don't need explicit nil check if we trust GetByToken to return error on not found.
+	// But let's keep it safe.
 	if session == nil {
 		return nil, fmt.Errorf("session not found")
 	}

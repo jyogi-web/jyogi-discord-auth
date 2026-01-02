@@ -112,6 +112,13 @@ create_secret "jyogi-discord-redirect-uri" "$DISCORD_REDIRECT_URI"
 create_secret "jyogi-discord-guild-id" "$DISCORD_GUILD_ID"
 create_secret "jyogi-jwt-secret" "$JWT_SECRET"
 
+# TiDB接続情報
+create_secret "jyogi-tidb-host" "$TIDB_DB_HOST"
+create_secret "jyogi-tidb-port" "${TIDB_DB_PORT:-4000}"
+create_secret "jyogi-tidb-username" "$TIDB_DB_USERNAME"
+create_secret "jyogi-tidb-password" "$TIDB_DB_PASSWORD"
+create_secret "jyogi-tidb-database" "$TIDB_DB_DATABASE"
+
 if [ -n "$DISCORD_BOT_TOKEN" ]; then
     create_secret "jyogi-discord-bot-token" "$DISCORD_BOT_TOKEN"
 fi

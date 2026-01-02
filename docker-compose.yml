@@ -13,15 +13,14 @@ services:
       - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - JWT_SECRET=${JWT_SECRET}
-      - DATABASE_PATH=/app/data/jyogi_auth.db
+      - TIDB_DB_HOST=${TIDB_DB_HOST}
+      - TIDB_DB_PORT=${TIDB_DB_PORT:-4000}
+      - TIDB_DB_USERNAME=${TIDB_DB_USERNAME}
+      - TIDB_DB_PASSWORD=${TIDB_DB_PASSWORD}
+      - TIDB_DB_DATABASE=${TIDB_DB_DATABASE}
       - SERVER_PORT=8080
       - HTTPS_ONLY=${HTTPS_ONLY:-false}
       - ENV=${ENV:-development}
-    volumes:
-      # データベースファイルを永続化
-      - db-data:/app/data
-    depends_on:
-      - migrate
     restart: unless-stopped
     healthcheck:
       test:
@@ -53,25 +52,14 @@ services:
       - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - JWT_SECRET=${JWT_SECRET}
+      - TIDB_DB_HOST=${TIDB_DB_HOST}
+      - TIDB_DB_PORT=${TIDB_DB_PORT:-4000}
+      - TIDB_DB_USERNAME=${TIDB_DB_USERNAME}
+      - TIDB_DB_PASSWORD=${TIDB_DB_PASSWORD}
+      - TIDB_DB_DATABASE=${TIDB_DB_DATABASE}
       - SERVER_PORT=8080
       - HTTPS_ONLY=${HTTPS_ONLY:-false}
       - ENV=test
-      - CGO_ENABLED=1
     working_dir: /app
     entrypoint: ["go"]
 
-  # マイグレーション専用コンテナ
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    volumes:
-      - db-data:/app/data
-    environment:
-      - DATABASE_PATH=/app/data/jyogi_auth.db
-    restart: on-failure
-
-volumes:
-  # データベースデータを永続化
-  db-data:
-    driver: local

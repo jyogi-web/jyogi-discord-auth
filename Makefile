@@ -1,4 +1,4 @@
-.PHONY: help build run test clean docker-build docker-up docker-down migrate-up migrate-down migrate-create fmt vet sync-profiles
+.PHONY: help build run test clean docker-build docker-up docker-down fmt vet sync-profiles gcp-setup deploy
 
 # デフォルトのヘルプコマンド
 help:
@@ -18,7 +18,6 @@ help:
 	@echo ""
 	@echo "プロフィール同期 コマンド:"
 	@echo "  make sync-profiles  - プロフィールを1回同期"
-	@echo "  make sync-profiles-daemon - プロフィールを定期的に同期"
 	@echo ""
 	@echo "Docker コマンド:"
 	@echo "  make docker-build   - Dockerイメージをビルド"
@@ -26,10 +25,10 @@ help:
 	@echo "  make docker-down    - Docker Composeで停止"
 	@echo "  make docker-logs    - Dockerログを表示"
 	@echo ""
-	@echo "マイグレーション コマンド:"
-	@echo "  make migrate-up     - マイグレーションを適用"
-	@echo "  make migrate-down   - マイグレーションをロールバック"
-	@echo "  make migrate-create NAME=<name> - 新しいマイグレーションを作成"
+	@echo "GCP コマンド:"
+	@echo "  make gcp-setup      - GCP環境をセットアップ"
+	@echo "  make deploy         - Cloud Runにデプロイ"
+
 
 # サーバー起動
 run:
@@ -109,39 +108,6 @@ docker-down:
 docker-logs:
 	docker-compose logs -f
 
-# マイグレーション実行（up）
-migrate-up:
-	@echo "🚀 Running migrations..."
-	@./scripts/migrate.sh up
-	@echo "✅ Migrations complete!"
-
-# マイグレーション実行（down）
-migrate-down:
-	@echo "🚀 Running migrations..."
-	@./scripts/migrate.sh down
-	@echo "✅ Migrations complete!"
-
-# マイグレーションステータス確認
-migrate-status:
-	@echo "🚀 Running migrations..."
-	@./scripts/migrate.sh status
-	@echo "✅ Migrations complete!"
-
-# 新しいマイグレーション作成
-migrate-create:
-	@if [ -z "$(NAME)" ]; then \
-		echo "❌ Error: NAME is required. Usage: make migrate-create NAME=add_users_table"; \
-		exit 1; \
-	fi
-	@NEXT_VERSION=$$(ls migrations/*.up.sql 2>/dev/null | wc -l | tr -d ' '); \
-	NEXT_VERSION=$$((NEXT_VERSION + 1)); \
-	NEXT_VERSION=$$(printf "%06d" $$NEXT_VERSION); \
-	touch "migrations/$${NEXT_VERSION}_$(NAME).up.sql"; \
-	touch "migrations/$${NEXT_VERSION}_$(NAME).down.sql"; \
-	echo "✅ Created migration files:"; \
-	echo "  - migrations/$${NEXT_VERSION}_$(NAME).up.sql"; \
-	echo "  - migrations/$${NEXT_VERSION}_$(NAME).down.sql"
-
 # 開発環境セットアップ
 setup:
 	@echo "🔧 Setting up development environment..."
@@ -166,14 +132,20 @@ sync-profiles:
 	go run ./cmd/sync-profiles -once
 	@echo "✅ Profile sync complete!"
 
-# プロフィール同期（定期実行）
-sync-profiles-daemon:
-	@echo "🔄 Starting profile sync daemon..."
-	go run ./cmd/sync-profiles
-	@echo "✅ Profile sync daemon stopped!"
-
 # プロフィール同期ビルド
 build-sync-profiles:
 	@echo "🔨 Building sync-profiles..."
 	go build -o bin/sync-profiles ./cmd/sync-profiles
 	@echo "✅ Build complete!"
+
+# GCPセットアップ
+gcp-setup:
+	@echo "🔧 Setting up GCP environment..."
+	./scripts/gcp-setup.sh
+	@echo "✅ GCP setup complete!"
+
+# Cloud Runデプロイ
+deploy:
+	@echo "🚀 Deploying to Cloud Run..."
+	./scripts/deploy-cloud-run.sh
+	@echo "✅ Deploy complete!"
