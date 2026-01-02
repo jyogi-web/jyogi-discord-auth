@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,12 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/jyogi-web/jyogi-discord-auth/internal/config"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/handler"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/middleware"
-	"github.com/jyogi-web/jyogi-discord-auth/internal/repository/sqlite"
+	gormRepo "github.com/jyogi-web/jyogi-discord-auth/internal/repository/gorm"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/service"
 	"github.com/jyogi-web/jyogi-discord-auth/pkg/discord"
 )
@@ -33,19 +29,21 @@ func main() {
 	log.Printf("Server port: %s", cfg.ServerPort)
 	log.Printf("HTTPS only: %v", cfg.HTTPSOnly)
 
-	// データベースを初期化
-	db, err := initDatabase(cfg.DatabasePath)
+	// データベースを初期化 (TiDB)
+	db, err := gormRepo.InitDB(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close()
+	// GORMのDB接続はCloseする必要がない（コネクションプールで管理される）
+	// sql.DBを取得してCloseすることは可能だが、main関数の最後で強制終了されるので必須ではない
 
-	// リポジトリを初期化
-	userRepo := sqlite.NewUserRepository(db)
-	sessionRepo := sqlite.NewSessionRepository(db)
-	clientRepo := sqlite.NewClientRepository(db)
-	authCodeRepo := sqlite.NewAuthCodeRepository(db)
-	tokenRepo := sqlite.NewTokenRepository(db)
+	// リポジトリを初期化 (GORM implementation)
+	userRepo := gormRepo.NewUserRepository(db)
+	sessionRepo := gormRepo.NewSessionRepository(db)
+	clientRepo := gormRepo.NewClientRepository(db)
+	authCodeRepo := gormRepo.NewAuthCodeRepository(db)
+	tokenRepo := gormRepo.NewTokenRepository(db)
+	// profileRepo := gormRepo.NewProfileRepository(db) // プロフィールリポジトリ（現在は未使用）
 
 	// Discord OAuth2クライアントを初期化
 	discordClient := discord.NewClient(
@@ -71,6 +69,7 @@ func main() {
 		sessionRepo,
 		1*time.Hour, // 1時間ごとにクリーンアップ
 	)
+	// プロフィールサービス（もしあれば）
 
 	// ハンドラーを初期化
 	authHandler := handler.NewAuthHandler(authService)
@@ -152,26 +151,4 @@ func main() {
 	}
 
 	log.Println("Server stopped")
-}
-
-// initDatabase はSQLiteデータベース接続を初期化します
-func initDatabase(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// 接続をテスト
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// コネクションプール設定
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	log.Printf("Database initialized: %s", dbPath)
-
-	return db, nil
 }

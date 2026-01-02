@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -11,10 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/jyogi-web/jyogi-discord-auth/internal/config"
-	"github.com/jyogi-web/jyogi-discord-auth/internal/repository/sqlite"
+	gormRepo "github.com/jyogi-web/jyogi-discord-auth/internal/repository/gorm"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/service"
 )
 
@@ -38,16 +35,15 @@ func main() {
 		log.Fatal("DISCORD_PROFILE_CHANNEL is required")
 	}
 
-	// データベースに接続
-	db, err := sql.Open("sqlite3", cfg.DatabasePath)
+	// データベースに接続 (TiDB)
+	db, err := gormRepo.InitDB(cfg)
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close()
 
-	// リポジトリを作成
-	profileRepo := sqlite.NewProfileRepository(db)
-	userRepo := sqlite.NewUserRepository(db)
+	// リポジトリを作成 (GORM)
+	profileRepo := gormRepo.NewProfileRepository(db)
+	userRepo := gormRepo.NewUserRepository(db)
 
 	// プロフィールサービスを作成
 	profileService := service.NewProfileService(
