@@ -97,8 +97,12 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-secrets "DISCORD_REDIRECT_URI=jyogi-discord-redirect-uri:latest" \
   --set-secrets "DISCORD_GUILD_ID=jyogi-discord-guild-id:latest" \
   --set-secrets "JWT_SECRET=jyogi-jwt-secret:latest" \
+  --set-secrets "TIDB_DB_HOST=jyogi-tidb-host:latest" \
+  --set-secrets "TIDB_DB_PORT=jyogi-tidb-port:latest" \
+  --set-secrets "TIDB_DB_USERNAME=jyogi-tidb-username:latest" \
+  --set-secrets "TIDB_DB_PASSWORD=jyogi-tidb-password:latest" \
+  --set-secrets "TIDB_DB_DATABASE=jyogi-tidb-database:latest" \
   $BOT_TOKEN_SECRET_FLAG \
-  --set-env-vars "DATABASE_PATH=/app/data/auth.db" \
   --set-env-vars "SERVER_PORT=8080" \
   --set-env-vars "HTTPS_ONLY=true" \
   --set-env-vars "CORS_ALLOWED_ORIGINS=$SAFE_CORS_ORIGINS" \
@@ -141,37 +145,8 @@ fi
 
 echo ""
 
-# マイグレーション実行
-echo -e "${YELLOW}マイグレーション実行確認${NC}"
-echo "初回のデプロイやDB変更後はマイグレーションが必要です。"
-echo ""
-read -p "マイグレーションを実行しますか？ (y/N): " -n 1 -r
-echo ""
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}マイグレーションJob作成中...${NC}"
-
-    # 既存のJobがあれば削除
-    if gcloud run jobs describe "$SERVICE_NAME-migrate" --region "$REGION" &>/dev/null; then
-        echo "既存のマイグレーションJobを削除中..."
-        gcloud run jobs delete "$SERVICE_NAME-migrate" --region "$REGION" --quiet
-    fi
-
-    # マイグレーションJob作成
-    gcloud run jobs create "$SERVICE_NAME-migrate" \
-      --image "$IMAGE_NAME" \
-      --region "$REGION" \
-      --set-env-vars "DATABASE_PATH=/app/data/auth.db" \
-      --command /bin/sh \
-      --args "-c,cd /app && ./scripts/migrate.sh up"
-
-    echo -e "${YELLOW}マイグレーション実行中...${NC}"
-    gcloud run jobs execute "$SERVICE_NAME-migrate" --region "$REGION" --wait
-
-    echo -e "${GREEN}✓ マイグレーション完了${NC}"
-else
-    echo "マイグレーションをスキップしました。"
-fi
+# マイグレーションはAutoMigrateにより起動時に実行されるため、別途Jobは不要
+echo -e "${YELLOW}マイグレーションはアプリケーション起動時に自動実行されます${NC}"
 
 echo ""
 echo -e "${GREEN}=== デプロイ完了 ===${NC}"
