@@ -1,0 +1,19 @@
+import { api } from './api';
+
+const AUTH_SERVER_URL = process.env.NEXT_PUBLIC_AUTH_SERVER_URL || 'http://localhost:8080';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+export function redirectToLogin() {
+  // redirect_uriを指定して認証サーバーにリダイレクト
+  const redirectUri = `${APP_URL}/auth/callback`;
+  window.location.href = `${AUTH_SERVER_URL}/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
+export async function logout() {
+  try {
+    await api.logout();
+    window.location.href = '/';
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+}
