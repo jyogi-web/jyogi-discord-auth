@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetByDiscordID(ctx context.Context, discordID string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context, limit, offset int) ([]*domain.User, error)
 }
 
 // SessionRepository はセッションデータアクセスのインターフェースを定義します
@@ -60,6 +61,7 @@ type ProfileRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Profile, error)
 	GetByUserID(ctx context.Context, userID string) (*domain.Profile, error)
 	GetByMessageID(ctx context.Context, messageID string) (*domain.Profile, error)
+	GetByUserIDs(ctx context.Context, userIDs []string) ([]*domain.Profile, error)
 	GetAll(ctx context.Context) ([]*domain.Profile, error)
 	Update(ctx context.Context, profile *domain.Profile) error
 	Upsert(ctx context.Context, profile *domain.Profile) error

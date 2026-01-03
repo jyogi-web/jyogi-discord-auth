@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jyogi-web/jyogi-discord-auth/internal/domain"
@@ -12,19 +14,48 @@ import (
 
 // AuthHandler は認証ハンドラーを表します
 type AuthHandler struct {
-	authService *service.AuthService
+	authService    *service.AuthService
+	allowedOrigins []string
 }
 
 // NewAuthHandler は新しい認証ハンドラーを作成します
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, allowedOrigins []string) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
+		authService:    authService,
+		allowedOrigins: allowedOrigins,
 	}
 }
 
 // HandleLogin はログインリクエストを処理します
 // Discord OAuth2認証ページにリダイレクトします
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// クライアントアプリから渡されたredirect_uriを取得
+	redirectURI := r.URL.Query().Get("redirect_uri")
+
+	// redirect_uriの検証
+	isValidOrigin := false
+	if redirectURI != "" {
+		for _, origin := range h.allowedOrigins {
+			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+			if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
+				isValidOrigin = true
+				break
+			}
+		}
+	}
+
+	// 不正なURIまたは空の場合はデフォルト（最初の許可オリジン + /auth/callback）を使用
+	if !isValidOrigin {
+		if len(h.allowedOrigins) > 0 {
+			redirectURI = h.allowedOrigins[0] + "/auth/callback"
+		} else {
+			// allowedOriginsが設定されていない場合はエラー
+			log.Printf("Warning: No allowed origins configured and invalid redirect_uri provided")
+			WriteError(w, http.StatusBadRequest, "invalid_redirect_uri", "Invalid redirect URI and no default configured")
+			return
+		}
+	}
+
 	// CSRF攻撃を防ぐためのstateを生成
 	state, err := h.authService.GenerateState()
 	if err != nil {
@@ -36,6 +67,16 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	SetSecureCookie(w, r, CookieOptions{
 		Name:     "oauth_state",
 		Value:    state,
+		Path:     "/",
+		MaxAge:   600, // 10分間有効
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// redirect_uriもCookieに保存（コールバック時に使用）
+	SetSecureCookie(w, r, CookieOptions{
+		Name:     "redirect_uri",
+		Value:    redirectURI,
 		Path:     "/",
 		MaxAge:   600, // 10分間有効
 		HttpOnly: true,
@@ -103,11 +144,41 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// ログイン成功レスポンス
-	WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Login successful",
-	})
+	// Cookieから保存されたredirect_uriを取得
+	redirectCookie, err := r.Cookie("redirect_uri")
+	redirectURL := ""
+	if err == nil && redirectCookie.Value != "" {
+		redirectURL = redirectCookie.Value
+	}
+
+	// redirect_uriの再検証（念のため）
+	isValidOrigin := false
+	if redirectURL != "" {
+		for _, origin := range h.allowedOrigins {
+			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+			if redirectURL == origin || strings.HasPrefix(redirectURL, origin+"/") {
+				isValidOrigin = true
+				break
+			}
+		}
+	}
+
+	if !isValidOrigin {
+		if len(h.allowedOrigins) > 0 {
+			redirectURL = h.allowedOrigins[0] + "/auth/callback"
+		} else {
+			// allowedOriginsが設定されていない場合はエラー
+			log.Printf("Warning: No allowed origins configured and invalid redirect_uri in callback")
+			WriteError(w, http.StatusBadRequest, "invalid_redirect_uri", "Invalid redirect URI and no default configured")
+			return
+		}
+	}
+
+	// redirect_uri Cookieを削除（使用済み）
+	DeleteCookie(w, r, "redirect_uri", "/")
+
+	// クライアントアプリにリダイレクト
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 // HandleLogout はログアウトリクエストを処理します
@@ -163,4 +234,66 @@ func (h *AuthHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, response)
+}
+
+// HandleMembers はじょぎメンバー一覧を返します
+// GET /api/members?limit=50&offset=0
+func (h *AuthHandler) HandleMembers(w http.ResponseWriter, r *http.Request) {
+	// セッショントークンを取得
+	sessionCookie, err := r.Cookie("session_token")
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "unauthorized", "No active session")
+		return
+	}
+
+	// セッションを検証
+	_, err = h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "unauthorized", "Invalid or expired session")
+		return
+	}
+
+	// ページネーションパラメータの取得
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil {
+			if parsedLimit > 0 && parsedLimit <= 100 {
+				limit = parsedLimit
+			}
+		}
+	}
+
+	offset := 0
+	if offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil {
+			if parsedOffset >= 0 {
+				offset = parsedOffset
+			}
+		}
+	}
+
+	// メンバー一覧をプロフィール情報付きで取得
+	membersWithProfiles, err := h.authService.GetMembersWithProfiles(r.Context(), limit, offset)
+	if err != nil {
+		log.Printf("Failed to get members: %v", err)
+		WriteError(w, http.StatusInternalServerError, "internal_error", "Failed to get members")
+		return
+	}
+
+	// DTOに変換
+	membersList := make([]*UserWithProfile, len(membersWithProfiles))
+	for i, memberWithProfile := range membersWithProfiles {
+		membersList[i] = NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	}
+
+	// メンバー一覧を返す
+	WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"members": membersList,
+		"limit":   limit,
+		"offset":  offset,
+		"count":   len(membersList),
+	})
 }

@@ -43,7 +43,7 @@ func main() {
 	clientRepo := gormRepo.NewClientRepository(db)
 	authCodeRepo := gormRepo.NewAuthCodeRepository(db)
 	tokenRepo := gormRepo.NewTokenRepository(db)
-	// profileRepo := gormRepo.NewProfileRepository(db) // プロフィールリポジトリ（現在は未使用）
+	profileRepo := gormRepo.NewProfileRepository(db)
 
 	// Discord OAuth2クライアントを初期化
 	discordClient := discord.NewClient(
@@ -57,6 +57,7 @@ func main() {
 		discordClient,
 		userRepo,
 		sessionRepo,
+		profileRepo,
 		cfg.DiscordGuildID,
 	)
 	oauth2Service := service.NewOAuth2Service(
@@ -72,7 +73,7 @@ func main() {
 	// プロフィールサービス（もしあれば）
 
 	// ハンドラーを初期化
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg.CORSAllowedOrigins)
 	tokenHandler := handler.NewTokenHandler(authService, cfg.JWTSecret)
 	apiHandler := handler.NewAPIHandler()
 	oauth2Handler := handler.NewOAuth2Handler(oauth2Service, authService)
@@ -91,6 +92,7 @@ func main() {
 	mux.HandleFunc("/auth/callback", authHandler.HandleCallback)
 	mux.HandleFunc("/auth/logout", authHandler.HandleLogout)
 	mux.HandleFunc("/api/me", authHandler.HandleMe)
+	mux.HandleFunc("/api/members", authHandler.HandleMembers)
 
 	// トークンエンドポイント
 	mux.HandleFunc("/token", tokenHandler.HandleIssueToken)

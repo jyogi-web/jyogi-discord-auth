@@ -20,6 +20,7 @@ type AuthService struct {
 	discordClient *discord.Client
 	userRepo      repository.UserRepository
 	sessionRepo   repository.SessionRepository
+	profileRepo   repository.ProfileRepository
 	guildID       string
 }
 
@@ -28,12 +29,14 @@ func NewAuthService(
 	discordClient *discord.Client,
 	userRepo repository.UserRepository,
 	sessionRepo repository.SessionRepository,
+	profileRepo repository.ProfileRepository,
 	guildID string,
 ) *AuthService {
 	return &AuthService{
 		discordClient: discordClient,
 		userRepo:      userRepo,
 		sessionRepo:   sessionRepo,
+		profileRepo:   profileRepo,
 		guildID:       guildID,
 	}
 }
@@ -209,4 +212,63 @@ func (s *AuthService) Logout(ctx context.Context, sessionToken string) error {
 	}
 
 	return nil
+}
+
+// MemberWithProfile はメンバー情報とプロフィール情報を結合した構造体
+type MemberWithProfile struct {
+	User    *domain.User
+	Profile *domain.Profile
+}
+
+// GetAllMembers は全てのメンバーを取得します（Deprecated: GetMembersWithProfilesを使用してください）
+func (s *AuthService) GetAllMembers(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	// 全ユーザーを取得
+	members, err := s.userRepo.GetAll(ctx, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all members: %w", err)
+	}
+
+	return members, nil
+}
+
+// GetMembersWithProfiles は指定された範囲のメンバーとそのプロフィール情報を取得します
+func (s *AuthService) GetMembersWithProfiles(ctx context.Context, limit, offset int) ([]*MemberWithProfile, error) {
+	// ユーザーを取得
+	users, err := s.userRepo.GetAll(ctx, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+
+	if len(users) == 0 {
+		return []*MemberWithProfile{}, nil
+	}
+
+	// ユーザーIDのリストを作成
+	userIDs := make([]string, len(users))
+	for i, user := range users {
+		userIDs[i] = user.ID
+	}
+
+	// 該当するプロフィールを一括取得
+	profiles, err := s.profileRepo.GetByUserIDs(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profiles: %w", err)
+	}
+
+	// プロフィールをマップ化（UserID -> Profile）
+	profileMap := make(map[string]*domain.Profile, len(profiles))
+	for _, profile := range profiles {
+		profileMap[profile.UserID] = profile
+	}
+
+	// ユーザーとプロフィールを結合
+	result := make([]*MemberWithProfile, 0, len(users))
+	for _, user := range users {
+		result = append(result, &MemberWithProfile{
+			User:    user,
+			Profile: profileMap[user.ID], // マップから取得（存在しなければnil）
+		})
+	}
+
+	return result, nil
 }
