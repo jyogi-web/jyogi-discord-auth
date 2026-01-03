@@ -105,3 +105,28 @@ func (r *userRepository) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
+// GetAll は全てのユーザーを取得します
+func (r *userRepository) GetAll(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	var users []User
+	query := r.db.WithContext(ctx).Order("last_login_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	if err := query.Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+
+	domainUsers := make([]*domain.User, len(users))
+	for i, u := range users {
+		domainUsers[i] = u.ToDomain()
+	}
+
+	return domainUsers, nil
+}

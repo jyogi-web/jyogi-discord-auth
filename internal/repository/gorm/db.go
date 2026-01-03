@@ -47,6 +47,18 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		},
 	)
 
+	// AutoMigrate専用のサイレントロガー（起動時のスキーマチェッククエリを非表示）
+	silentLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Silent, // すべてのクエリを非表示
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      false,
+			Colorful:                  false,
+		},
+	)
+
 	log.Printf("GORM logger configured with level: %v, SlowThreshold: %v", logLevel, time.Second)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
@@ -71,30 +83,38 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
-	// AutoMigrate実行
-	log.Printf("Starting AutoMigrate for TiDB %s@%s:%s/%s",
-		cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
+	// AutoMigrate実行（環境変数で制御可能）
+	if cfg.DisableAutoMigrate {
+		log.Printf("AutoMigrate is disabled for TiDB %s@%s:%s/%s (DISABLE_AUTO_MIGRATE=true)",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
+	} else {
+		log.Printf("Starting AutoMigrate for TiDB %s@%s:%s/%s",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
 
-	if err := db.AutoMigrate(
-		&User{},
-		&Session{},
-		&ClientApp{},
-		&AuthCode{},
-		&Token{},
-		&Profile{},
-	); err != nil {
-		// マイグレーション失敗時、DB接続をクローズしてリソースリークを防ぐ
-		if sqlDB, dbErr := db.DB(); dbErr == nil {
-			sqlDB.Close()
+		// AutoMigrate中はサイレントロガーを使用（スキーマチェッククエリを非表示）
+		dbWithSilentLogger := db.Session(&gorm.Session{Logger: silentLogger})
+
+		if err := dbWithSilentLogger.AutoMigrate(
+			&User{},
+			&Session{},
+			&ClientApp{},
+			&AuthCode{},
+			&Token{},
+			&Profile{},
+		); err != nil {
+			// マイグレーション失敗時、DB接続をクローズしてリソースリークを防ぐ
+			if sqlDB, dbErr := db.DB(); dbErr == nil {
+				sqlDB.Close()
+			}
+			log.Printf("AutoMigrate failed for TiDB %s@%s:%s/%s: %v",
+				cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
+			return nil, fmt.Errorf("failed to migrate schema for TiDB %s@%s:%s/%s: %w",
+				cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
 		}
-		log.Printf("AutoMigrate failed for TiDB %s@%s:%s/%s: %v",
-			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
-		return nil, fmt.Errorf("failed to migrate schema for TiDB %s@%s:%s/%s: %w",
-			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase, err)
-	}
 
-	log.Printf("AutoMigrate completed successfully for TiDB %s@%s:%s/%s",
-		cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
+		log.Printf("AutoMigrate completed successfully for TiDB %s@%s:%s/%s",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
+	}
 
 	log.Printf("TiDB initialized: %s@%s:%s/%s", cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, cfg.TiDBDatabase)
 

@@ -20,6 +20,7 @@ type AuthService struct {
 	discordClient *discord.Client
 	userRepo      repository.UserRepository
 	sessionRepo   repository.SessionRepository
+	profileRepo   repository.ProfileRepository
 	guildID       string
 }
 
@@ -28,12 +29,14 @@ func NewAuthService(
 	discordClient *discord.Client,
 	userRepo repository.UserRepository,
 	sessionRepo repository.SessionRepository,
+	profileRepo repository.ProfileRepository,
 	guildID string,
 ) *AuthService {
 	return &AuthService{
 		discordClient: discordClient,
 		userRepo:      userRepo,
 		sessionRepo:   sessionRepo,
+		profileRepo:   profileRepo,
 		guildID:       guildID,
 	}
 }
@@ -209,4 +212,53 @@ func (s *AuthService) Logout(ctx context.Context, sessionToken string) error {
 	}
 
 	return nil
+}
+
+// MemberWithProfile はメンバー情報とプロフィール情報を結合した構造体
+type MemberWithProfile struct {
+	User    *domain.User
+	Profile *domain.Profile
+}
+
+// GetAllMembers は全てのメンバーを取得します（Deprecated: GetAllMembersWithProfilesを使用してください）
+func (s *AuthService) GetAllMembers(ctx context.Context) ([]*domain.User, error) {
+	// 全ユーザーを取得
+	members, err := s.userRepo.GetAll(ctx, 500, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all members: %w", err)
+	}
+
+	return members, nil
+}
+
+// GetAllMembersWithProfiles は全てのメンバーとそのプロフィール情報を取得します
+func (s *AuthService) GetAllMembersWithProfiles(ctx context.Context) ([]*MemberWithProfile, error) {
+	// 全ユーザーを取得
+	users, err := s.userRepo.GetAll(ctx, 500, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+
+	// 全プロフィールを一括取得（N+1問題を回避）
+	allProfiles, err := s.profileRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all profiles: %w", err)
+	}
+
+	// プロフィールをマップ化（UserID -> Profile）
+	profileMap := make(map[string]*domain.Profile, len(allProfiles))
+	for _, profile := range allProfiles {
+		profileMap[profile.UserID] = profile
+	}
+
+	// ユーザーとプロフィールを結合
+	result := make([]*MemberWithProfile, 0, len(users))
+	for _, user := range users {
+		result = append(result, &MemberWithProfile{
+			User:    user,
+			Profile: profileMap[user.ID], // マップから取得（存在しなければnil）
+		})
+	}
+
+	return result, nil
 }

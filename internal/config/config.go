@@ -28,12 +28,13 @@ type Config struct {
 	DatabasePath string
 
 	// TiDB
-	TiDBHost       string
-	TiDBPort       string
-	TiDBUser       string
-	TiDBPassword   string
-	TiDBDatabase   string
-	TiDBDisableTLS bool
+	TiDBHost           string
+	TiDBPort           string
+	TiDBUser           string
+	TiDBPassword       string
+	TiDBDatabase       string
+	TiDBDisableTLS     bool
+	DisableAutoMigrate bool
 
 	// Server
 	ServerPort string
@@ -94,6 +95,15 @@ func Load() (*Config, error) {
 		cfg.TiDBDisableTLS = false
 	} else {
 		cfg.TiDBDisableTLS = disableTLS
+	}
+
+	// DISABLE_AUTO_MIGRATEをbooleanとしてパース
+	disableAutoMigrate, err := strconv.ParseBool(os.Getenv("DISABLE_AUTO_MIGRATE"))
+	if err != nil {
+		// 設定されていないか不正な場合はfalseをデフォルトとする（AutoMigrate有効）
+		cfg.DisableAutoMigrate = false
+	} else {
+		cfg.DisableAutoMigrate = disableAutoMigrate
 	}
 
 	// デフォルト値を設定

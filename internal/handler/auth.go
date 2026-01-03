@@ -25,6 +25,13 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 // HandleLogin はログインリクエストを処理します
 // Discord OAuth2認証ページにリダイレクトします
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// クライアントアプリから渡されたredirect_uriを取得
+	redirectURI := r.URL.Query().Get("redirect_uri")
+	if redirectURI == "" {
+		// デフォルトのリダイレクト先（デモアプリ）
+		redirectURI = "http://localhost:3000/auth/callback"
+	}
+
 	// CSRF攻撃を防ぐためのstateを生成
 	state, err := h.authService.GenerateState()
 	if err != nil {
@@ -36,6 +43,16 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	SetSecureCookie(w, r, CookieOptions{
 		Name:     "oauth_state",
 		Value:    state,
+		Path:     "/",
+		MaxAge:   600, // 10分間有効
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// redirect_uriもCookieに保存（コールバック時に使用）
+	SetSecureCookie(w, r, CookieOptions{
+		Name:     "redirect_uri",
+		Value:    redirectURI,
 		Path:     "/",
 		MaxAge:   600, // 10分間有効
 		HttpOnly: true,
@@ -103,11 +120,18 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// ログイン成功レスポンス
-	WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Login successful",
-	})
+	// Cookieから保存されたredirect_uriを取得
+	redirectCookie, err := r.Cookie("redirect_uri")
+	redirectURL := "http://localhost:3000/auth/callback" // デフォルト
+	if err == nil && redirectCookie.Value != "" {
+		redirectURL = redirectCookie.Value
+	}
+
+	// redirect_uri Cookieを削除（使用済み）
+	DeleteCookie(w, r, "redirect_uri", "/")
+
+	// クライアントアプリにリダイレクト
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 // HandleLogout はログアウトリクエストを処理します
@@ -163,4 +187,42 @@ func (h *AuthHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, response)
+}
+
+// HandleMembers はじょぎメンバー一覧を返します
+// GET /api/members
+func (h *AuthHandler) HandleMembers(w http.ResponseWriter, r *http.Request) {
+	// セッショントークンを取得
+	sessionCookie, err := r.Cookie("session_token")
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "unauthorized", "No active session")
+		return
+	}
+
+	// セッションを検証
+	_, err = h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "unauthorized", "Invalid or expired session")
+		return
+	}
+
+	// メンバー一覧をプロフィール情報付きで取得
+	membersWithProfiles, err := h.authService.GetAllMembersWithProfiles(r.Context())
+	if err != nil {
+		log.Printf("Failed to get members: %v", err)
+		WriteError(w, http.StatusInternalServerError, "internal_error", "Failed to get members")
+		return
+	}
+
+	// DTOに変換
+	membersList := make([]*UserWithProfile, len(membersWithProfiles))
+	for i, memberWithProfile := range membersWithProfiles {
+		membersList[i] = NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	}
+
+	// メンバー一覧を返す
+	WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"members": membersList,
+		"total":   len(membersList),
+	})
 }

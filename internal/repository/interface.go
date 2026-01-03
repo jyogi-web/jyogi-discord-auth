@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetByDiscordID(ctx context.Context, discordID string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context, limit, offset int) ([]*domain.User, error)
 }
 
 // SessionRepository はセッションデータアクセスのインターフェースを定義します
