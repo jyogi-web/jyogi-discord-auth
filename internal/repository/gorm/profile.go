@@ -75,6 +75,25 @@ func (r *profileRepository) GetByMessageID(ctx context.Context, messageID string
 	return p.ToDomain(), nil
 }
 
+// GetByUserIDs はユーザーIDのリストでプロフィールを一括取得します
+func (r *profileRepository) GetByUserIDs(ctx context.Context, userIDs []string) ([]*domain.Profile, error) {
+	if len(userIDs) == 0 {
+		return []*domain.Profile{}, nil
+	}
+
+	var profiles []Profile
+	if err := r.db.WithContext(ctx).Where("user_id IN ?", userIDs).Find(&profiles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get profiles by user_ids: %w", err)
+	}
+
+	domainProfiles := make([]*domain.Profile, len(profiles))
+	for i, p := range profiles {
+		domainProfiles[i] = p.ToDomain()
+	}
+
+	return domainProfiles, nil
+}
+
 // GetAll はすべてのプロフィールを取得します
 func (r *profileRepository) GetAll(ctx context.Context) ([]*domain.Profile, error) {
 	var profiles []Profile

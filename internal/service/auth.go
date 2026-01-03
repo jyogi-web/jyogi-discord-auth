@@ -220,10 +220,10 @@ type MemberWithProfile struct {
 	Profile *domain.Profile
 }
 
-// GetAllMembers は全てのメンバーを取得します（Deprecated: GetAllMembersWithProfilesを使用してください）
-func (s *AuthService) GetAllMembers(ctx context.Context) ([]*domain.User, error) {
+// GetAllMembers は全てのメンバーを取得します（Deprecated: GetMembersWithProfilesを使用してください）
+func (s *AuthService) GetAllMembers(ctx context.Context, limit, offset int) ([]*domain.User, error) {
 	// 全ユーザーを取得
-	members, err := s.userRepo.GetAll(ctx, 500, 0)
+	members, err := s.userRepo.GetAll(ctx, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all members: %w", err)
 	}
@@ -231,23 +231,33 @@ func (s *AuthService) GetAllMembers(ctx context.Context) ([]*domain.User, error)
 	return members, nil
 }
 
-// GetAllMembersWithProfiles は全てのメンバーとそのプロフィール情報を取得します
-func (s *AuthService) GetAllMembersWithProfiles(ctx context.Context) ([]*MemberWithProfile, error) {
-	// 全ユーザーを取得
-	users, err := s.userRepo.GetAll(ctx, 500, 0)
+// GetMembersWithProfiles は指定された範囲のメンバーとそのプロフィール情報を取得します
+func (s *AuthService) GetMembersWithProfiles(ctx context.Context, limit, offset int) ([]*MemberWithProfile, error) {
+	// ユーザーを取得
+	users, err := s.userRepo.GetAll(ctx, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all users: %w", err)
+		return nil, fmt.Errorf("failed to get users: %w", err)
 	}
 
-	// 全プロフィールを一括取得（N+1問題を回避）
-	allProfiles, err := s.profileRepo.GetAll(ctx)
+	if len(users) == 0 {
+		return []*MemberWithProfile{}, nil
+	}
+
+	// ユーザーIDのリストを作成
+	userIDs := make([]string, len(users))
+	for i, user := range users {
+		userIDs[i] = user.ID
+	}
+
+	// 該当するプロフィールを一括取得
+	profiles, err := s.profileRepo.GetByUserIDs(ctx, userIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all profiles: %w", err)
+		return nil, fmt.Errorf("failed to get profiles: %w", err)
 	}
 
 	// プロフィールをマップ化（UserID -> Profile）
-	profileMap := make(map[string]*domain.Profile, len(allProfiles))
-	for _, profile := range allProfiles {
+	profileMap := make(map[string]*domain.Profile, len(profiles))
+	for _, profile := range profiles {
 		profileMap[profile.UserID] = profile
 	}
 

@@ -73,7 +73,7 @@ func main() {
 	// プロフィールサービス（もしあれば）
 
 	// ハンドラーを初期化
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg.CORSAllowedOrigins)
 	tokenHandler := handler.NewTokenHandler(authService, cfg.JWTSecret)
 	apiHandler := handler.NewAPIHandler()
 	oauth2Handler := handler.NewOAuth2Handler(oauth2Service, authService)

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jyogi-web/jyogi-discord-auth/internal/domain"
@@ -12,13 +14,15 @@ import (
 
 // AuthHandler は認証ハンドラーを表します
 type AuthHandler struct {
-	authService *service.AuthService
+	authService    *service.AuthService
+	allowedOrigins []string
 }
 
 // NewAuthHandler は新しい認証ハンドラーを作成します
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, allowedOrigins []string) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
+		authService:    authService,
+		allowedOrigins: allowedOrigins,
 	}
 }
 
@@ -27,9 +31,26 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// クライアントアプリから渡されたredirect_uriを取得
 	redirectURI := r.URL.Query().Get("redirect_uri")
-	if redirectURI == "" {
-		// デフォルトのリダイレクト先（デモアプリ）
-		redirectURI = "http://localhost:3000/auth/callback"
+
+	// redirect_uriの検証
+	isValidOrigin := false
+	if redirectURI != "" {
+		for _, origin := range h.allowedOrigins {
+			if strings.HasPrefix(redirectURI, origin) {
+				isValidOrigin = true
+				break
+			}
+		}
+	}
+
+	// 不正なURIまたは空の場合はデフォルト（最初の許可オリジン + /auth/callback）を使用
+	// ただし、allowedOriginsが空の場合は安全のためlocalhostを使用（開発環境想定）
+	if !isValidOrigin {
+		if len(h.allowedOrigins) > 0 {
+			redirectURI = h.allowedOrigins[0] + "/auth/callback"
+		} else {
+			redirectURI = "http://localhost:3000/auth/callback"
+		}
 	}
 
 	// CSRF攻撃を防ぐためのstateを生成
@@ -122,9 +143,28 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Cookieから保存されたredirect_uriを取得
 	redirectCookie, err := r.Cookie("redirect_uri")
-	redirectURL := "http://localhost:3000/auth/callback" // デフォルト
+	redirectURL := ""
 	if err == nil && redirectCookie.Value != "" {
 		redirectURL = redirectCookie.Value
+	}
+
+	// redirect_uriの再検証（念のため）
+	isValidOrigin := false
+	if redirectURL != "" {
+		for _, origin := range h.allowedOrigins {
+			if strings.HasPrefix(redirectURL, origin) {
+				isValidOrigin = true
+				break
+			}
+		}
+	}
+
+	if !isValidOrigin {
+		if len(h.allowedOrigins) > 0 {
+			redirectURL = h.allowedOrigins[0] + "/auth/callback"
+		} else {
+			redirectURL = "http://localhost:3000/auth/callback"
+		}
 	}
 
 	// redirect_uri Cookieを削除（使用済み）
@@ -190,7 +230,7 @@ func (h *AuthHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleMembers はじょぎメンバー一覧を返します
-// GET /api/members
+// GET /api/members?limit=50&offset=0
 func (h *AuthHandler) HandleMembers(w http.ResponseWriter, r *http.Request) {
 	// セッショントークンを取得
 	sessionCookie, err := r.Cookie("session_token")
@@ -206,8 +246,30 @@ func (h *AuthHandler) HandleMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ページネーションパラメータの取得
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil {
+			if parsedLimit > 0 && parsedLimit <= 100 {
+				limit = parsedLimit
+			}
+		}
+	}
+
+	offset := 0
+	if offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil {
+			if parsedOffset >= 0 {
+				offset = parsedOffset
+			}
+		}
+	}
+
 	// メンバー一覧をプロフィール情報付きで取得
-	membersWithProfiles, err := h.authService.GetAllMembersWithProfiles(r.Context())
+	membersWithProfiles, err := h.authService.GetMembersWithProfiles(r.Context(), limit, offset)
 	if err != nil {
 		log.Printf("Failed to get members: %v", err)
 		WriteError(w, http.StatusInternalServerError, "internal_error", "Failed to get members")
@@ -223,6 +285,8 @@ func (h *AuthHandler) HandleMembers(w http.ResponseWriter, r *http.Request) {
 	// メンバー一覧を返す
 	WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"members": membersList,
-		"total":   len(membersList),
+		"limit":   limit,
+		"offset":  offset,
+		"count":   len(membersList),
 	})
 }
