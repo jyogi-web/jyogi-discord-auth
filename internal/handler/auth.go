@@ -36,7 +36,8 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	isValidOrigin := false
 	if redirectURI != "" {
 		for _, origin := range h.allowedOrigins {
-			if strings.HasPrefix(redirectURI, origin) {
+			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+			if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
 				isValidOrigin = true
 				break
 			}
@@ -44,12 +45,14 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 不正なURIまたは空の場合はデフォルト（最初の許可オリジン + /auth/callback）を使用
-	// ただし、allowedOriginsが空の場合は安全のためlocalhostを使用（開発環境想定）
 	if !isValidOrigin {
 		if len(h.allowedOrigins) > 0 {
 			redirectURI = h.allowedOrigins[0] + "/auth/callback"
 		} else {
-			redirectURI = "http://localhost:3000/auth/callback"
+			// allowedOriginsが設定されていない場合はエラー
+			log.Printf("Warning: No allowed origins configured and invalid redirect_uri provided")
+			WriteError(w, http.StatusBadRequest, "invalid_redirect_uri", "Invalid redirect URI and no default configured")
+			return
 		}
 	}
 
@@ -152,7 +155,8 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	isValidOrigin := false
 	if redirectURL != "" {
 		for _, origin := range h.allowedOrigins {
-			if strings.HasPrefix(redirectURL, origin) {
+			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+			if redirectURL == origin || strings.HasPrefix(redirectURL, origin+"/") {
 				isValidOrigin = true
 				break
 			}
@@ -163,7 +167,10 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		if len(h.allowedOrigins) > 0 {
 			redirectURL = h.allowedOrigins[0] + "/auth/callback"
 		} else {
-			redirectURL = "http://localhost:3000/auth/callback"
+			// allowedOriginsが設定されていない場合はエラー
+			log.Printf("Warning: No allowed origins configured and invalid redirect_uri in callback")
+			WriteError(w, http.StatusBadRequest, "invalid_redirect_uri", "Invalid redirect URI and no default configured")
+			return
 		}
 	}
 
