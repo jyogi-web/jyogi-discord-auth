@@ -9,13 +9,13 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 
 詳細なドキュメントは公式サイトをご覧ください：
 
-**🌐 [https://TODO](https://TODO)** （日本語 / English）
+**🌐 [https://jyogi-web.github.io/jyogi-discord-auth/](https://jyogi-web.github.io/jyogi-discord-auth/)** （日本語 / English）
 
-- **クイックスタート（クライアント統合）**: 他のアプリから認証システムを利用する方法
-- **開発者ガイド**: 開発環境のセットアップと貢献方法
-- **アーキテクチャ**: システム設計とプロジェクト構造
-- **デプロイメント**: Cloud RunやCloud Functionsへのデプロイ手順
-- **APIリファレンス**: 利用可能なエンドポイントの詳細
+- **[クイックスタート（クライアント統合）](https://jyogi-web.github.io/jyogi-discord-auth/guide/client-integration)**: 他のアプリから認証システムを利用する方法
+- **[開発者ガイド](https://jyogi-web.github.io/jyogi-discord-auth/guide/contributing)**: 開発環境のセットアップと貢献方法
+- **[アーキテクチャ](https://jyogi-web.github.io/jyogi-discord-auth/guide/architecture)**: システム設計とプロジェクト構造
+- **[デプロイメント](https://jyogi-web.github.io/jyogi-discord-auth/guide/deployment)**: Cloud RunやCloud Functionsへのデプロイ手順
+- **[APIリファレンス](https://jyogi-web.github.io/jyogi-discord-auth/reference/api)**: 利用可能なエンドポイントの詳細
 
 ## 概要
 
@@ -34,7 +34,7 @@ Discord OAuth2を使用したじょぎメンバー専用の認証システム。
 
 ### 開発者向け
 
-開発環境のセットアップについては、[開発者ガイド](https://TODO)をご覧ください。
+開発環境のセットアップについては、[開発者ガイド](https://jyogi-web.github.io/jyogi-discord-auth/guide/contributing)をご覧ください。
 
 ```bash
 # リポジトリのクローン
@@ -51,11 +51,11 @@ go run cmd/server/main.go
 
 ### クライアント統合者向け
 
-他のアプリから認証システムを利用する方法については、[クイックスタート（クライアント統合）](https://TODO)をご覧ください。
+他のアプリから認証システムを利用する方法については、[クイックスタート（クライアント統合）](https://jyogi-web.github.io/jyogi-discord-auth/guide/client-integration)をご覧ください。
 
 ## API エンドポイント
 
-詳細なAPI仕様は[APIリファレンス](https://TODO)をご覧ください。
+詳細なAPI仕様は[APIリファレンス](https://jyogi-web.github.io/jyogi-discord-auth/reference/api)をご覧ください。
 
 ### 認証
 
