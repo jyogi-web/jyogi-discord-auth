@@ -1,8 +1,0 @@
-{
-  "session_id": "test-session-123",
-  "transcript_path": "/tmp/test-transcript.txt",
-  "cwd": "/Users/uozumikouhei/workspace/jyogi-discord-auth",
-  "permission_mode": "ask",
-  "hook_event_name": "Stop",
-  "reason": "Task completed"
-}

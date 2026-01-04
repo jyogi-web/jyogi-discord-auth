@@ -74,3 +74,4 @@ jyogi_auth.db
 function.zip
 bootstrap
 *.zip
+.claude/
