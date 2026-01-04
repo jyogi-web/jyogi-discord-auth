@@ -42,9 +42,6 @@ cd jyogi-discord-auth
 cp .env.example .env
 # .envファイルを編集
 
-# マイグレーション実行
-./scripts/migrate.sh
-
 # サーバー起動
 go run cmd/server/main.go
 ```
@@ -72,10 +69,6 @@ go run cmd/server/main.go
 
 - `GET /api/verify` - JWT検証
 - `GET /api/user` - ユーザー情報取得
-
-## ライセンス
-
-MIT License
 
 ## 貢献
 
