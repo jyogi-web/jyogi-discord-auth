@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+    base: '/jyogi-discord-auth/',
     title: "Jyogi Auth",
     description: "Discord Authentication System for Jyogi",
 
