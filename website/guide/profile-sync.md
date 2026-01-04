@@ -75,15 +75,9 @@ make sync-profiles
 go run ./cmd/sync-profiles -once
 ```
 
-### 定期実行 (Daemon)
-
-```bash
-make sync-profiles-daemon
-```
-
 ### サーバーレスデプロイ
 
-Cloud FunctionsやAWS Lambdaにデプロイして運用することを推奨します。
+Cloud Functionsにデプロイして運用することを推奨します。
 詳しくは [デプロイメントガイド](./deployment.md) を参照してください。
 
 ## エラーハンドリング

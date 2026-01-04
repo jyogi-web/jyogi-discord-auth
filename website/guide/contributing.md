@@ -4,7 +4,7 @@
 
 ## 前提条件
 
-1. Go 1.23以上がインストールされていること
+1. Go 1.25以上がインストールされていること
 2. Discord Developer Portalでアプリケーションを作成済み
 3. じょぎDiscordサーバーのサーバーIDを取得済み
 
@@ -39,13 +39,7 @@ cp .env.example .env
 - `DISCORD_PROFILE_CHANNEL`: 自己紹介チャンネルID
 - `JWT_SECRET`: JWT署名用の秘密鍵（最低32文字）
 
-## 4. データベースのマイグレーション
-
-```bash
-./scripts/migrate.sh
-```
-
-## 5. サーバーの起動
+## 4. サーバーの起動
 
 ```bash
 go run cmd/server/main.go

@@ -75,15 +75,9 @@ make sync-profiles
 go run ./cmd/sync-profiles -once
 ```
 
-### Periodic Execution (Daemon)
-
-```bash
-make sync-profiles-daemon
-```
-
 ### Serverless Deployment
 
-It is recommended to deploy to Cloud Functions or AWS Lambda for operation.
+It is recommended to deploy to Cloud Functions for operation.
 See the [Deployment Guide](./deployment.md) for details.
 
 ## Error Handling

@@ -10,8 +10,8 @@
 
 ## 技術スタック
 
-- **言語**: Go 1.23+
-- **データベース**: SQLite（将来PostgreSQLへの移行可能な設計）
+- **言語**: Go 1.25
+- **データベース**: TiDB(MySQL互換)
 - **認証**: Discord OAuth2, JWT
 - **デプロイ**: Google Cloud Run（認証サーバー）、Google Cloud Functions（プロフィール同期）
 

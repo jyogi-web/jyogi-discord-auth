@@ -104,16 +104,6 @@ make sync-profiles
 go run ./cmd/sync-profiles -once
 ```
 
-### 定期実行（デーモンモード）
-
-```bash
-# デフォルト（60分間隔）
-make sync-profiles-daemon
-
-# カスタム間隔（例: 30分間隔）
-go run ./cmd/sync-profiles -interval 30
-```
-
 ### ビルドして実行
 
 ```bash

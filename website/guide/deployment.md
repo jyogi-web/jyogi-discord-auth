@@ -44,7 +44,7 @@ Cloud Runサービスには以下の環境変数を設定してください：
 
 ---
 
-## Google Cloud Functions (プロフィール同期)
+## Google Cloud Functions (プロフィール同期)(未実装)
 
 ### 概要
 
@@ -73,4 +73,3 @@ cp .env.yaml.example .env.yaml
 ## その他のデプロイオプション
 
 - **Docker**: `docker-compose.yml` を使用して任意のサーバーで実行可能です。
-- **AWS Lambda**: `deployments/aws-lambda` に設定例があります。
