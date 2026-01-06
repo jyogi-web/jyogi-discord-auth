@@ -39,7 +39,7 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 	var u User
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found: %s", id)
+			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -52,7 +52,7 @@ func (r *userRepository) GetByDiscordID(ctx context.Context, discordID string) (
 	var u User
 	if err := r.db.WithContext(ctx).Where("discord_id = ?", discordID).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found: %s", discordID)
+			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by discord_id: %w", err)
 	}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -77,7 +78,7 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 		user, err := s.userRepo.GetByDiscordID(ctx, msg.Author.ID)
 		if err != nil {
 			// ユーザーが見つからない場合は新規作成
-			if err.Error() == fmt.Sprintf("user not found: %s", msg.Author.ID) {
+			if errors.Is(err, domain.ErrUserNotFound) {
 				user = nil
 			} else {
 				log.Printf("Error getting user by discord_id %s: %v", msg.Author.ID, err)
