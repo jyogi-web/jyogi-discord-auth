@@ -10,6 +10,7 @@ type UserWithProfile struct {
 	ID          string  `json:"id"`
 	DiscordID   string  `json:"discord_id"`
 	Username    string  `json:"username"`
+	DisplayName string  `json:"display_name"`
 	AvatarURL   string  `json:"avatar_url"`
 	LastLoginAt *string `json:"last_login_at,omitempty"`
 
@@ -29,10 +30,11 @@ type ProfileData struct {
 // NewUserWithProfile はドメインモデルからDTOを作成します
 func NewUserWithProfile(user *domain.User, profile *domain.Profile) *UserWithProfile {
 	dto := &UserWithProfile{
-		ID:        user.ID,
-		DiscordID: user.DiscordID,
-		Username:  user.Username,
-		AvatarURL: user.AvatarURL,
+		ID:          user.ID,
+		DiscordID:   user.DiscordID,
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		AvatarURL:   user.AvatarURL,
 	}
 
 	// LastLoginAtの変換

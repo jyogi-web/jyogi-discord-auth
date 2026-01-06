@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -77,7 +78,7 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 		user, err := s.userRepo.GetByDiscordID(ctx, msg.Author.ID)
 		if err != nil {
 			// ユーザーが見つからない場合は新規作成
-			if err.Error() == fmt.Sprintf("user not found: %s", msg.Author.ID) {
+			if errors.Is(err, domain.ErrUserNotFound) {
 				user = nil
 			} else {
 				log.Printf("Error getting user by discord_id %s: %v", msg.Author.ID, err)
@@ -89,11 +90,13 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 		// ユーザーが存在しない場合は作成
 		if user == nil {
 			user = &domain.User{
-				ID:        uuid.New().String(),
-				DiscordID: msg.Author.ID,
-				Username:  msg.Author.Username,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				ID:          uuid.New().String(),
+				DiscordID:   msg.Author.ID,
+				Username:    msg.Author.Username,
+				DisplayName: msg.Author.GetDisplayName(),
+				AvatarURL:   msg.Author.GetAvatarURL(),
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
 			}
 
 			if err := s.userRepo.Create(ctx, user); err != nil {
@@ -103,6 +106,38 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 			}
 
 			log.Printf("Created new user: %s (discord_id: %s)", user.Username, user.DiscordID)
+		} else {
+			// 既存ユーザーの場合、Discord情報を更新
+			// Username, DisplayName, AvatarURLはDiscordの最新情報に同期
+			newUsername := msg.Author.Username
+			newDisplayName := msg.Author.GetDisplayName()
+			newAvatarURL := msg.Author.GetAvatarURL()
+			updated := false
+
+			if user.Username != newUsername {
+				user.Username = newUsername
+				updated = true
+			}
+			if user.DisplayName != newDisplayName {
+				user.DisplayName = newDisplayName
+				updated = true
+			}
+			if user.AvatarURL != newAvatarURL {
+				user.AvatarURL = newAvatarURL
+				updated = true
+			}
+
+			if updated {
+				user.UpdatedAt = time.Now()
+				if err := s.userRepo.Update(ctx, user); err != nil {
+					// ユーザー更新エラーはログに記録するが、プロフィール同期は続行
+					log.Printf("Warning: Failed to update user info for discord_id %s: %v (proceeding with profile sync)", msg.Author.ID, err)
+					errorCount++
+					// continue は削除: プロフィール同期は続行する
+				} else {
+					log.Printf("Updated user info for %s (discord_id: %s)", user.Username, user.DiscordID)
+				}
+			}
 		}
 
 		// プロフィールを作成または更新
