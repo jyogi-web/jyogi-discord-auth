@@ -107,11 +107,17 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 
 			log.Printf("Created new user: %s (discord_id: %s)", user.Username, user.DiscordID)
 		} else {
-			// 既存ユーザーの場合、表示名とアバターURLを更新
+			// 既存ユーザーの場合、Discord情報を更新
+			// Username, DisplayName, AvatarURLはDiscordの最新情報に同期
+			newUsername := msg.Author.Username
 			newDisplayName := msg.Author.GetDisplayName()
 			newAvatarURL := msg.Author.GetAvatarURL()
 			updated := false
 
+			if user.Username != newUsername {
+				user.Username = newUsername
+				updated = true
+			}
 			if user.DisplayName != newDisplayName {
 				user.DisplayName = newDisplayName
 				updated = true
@@ -124,11 +130,13 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 			if updated {
 				user.UpdatedAt = time.Now()
 				if err := s.userRepo.Update(ctx, user); err != nil {
-					log.Printf("Error updating user for discord_id %s: %v", msg.Author.ID, err)
+					// ユーザー更新エラーはログに記録するが、プロフィール同期は続行
+					log.Printf("Warning: Failed to update user info for discord_id %s: %v (proceeding with profile sync)", msg.Author.ID, err)
 					errorCount++
-					continue
+					// continue は削除: プロフィール同期は続行する
+				} else {
+					log.Printf("Updated user info for %s (discord_id: %s)", user.Username, user.DiscordID)
 				}
-				log.Printf("Updated user info for %s (discord_id: %s)", user.Username, user.DiscordID)
 			}
 		}
 
