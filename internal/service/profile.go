@@ -108,12 +108,14 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 			log.Printf("Created new user: %s (discord_id: %s)", user.Username, user.DiscordID)
 		} else {
 			// 既存ユーザーの場合、表示名とアバターURLを更新
+			newDisplayName := msg.Author.GetDisplayName()
+			newAvatarURL := msg.Author.GetAvatarURL()
 			updated := false
-			if user.DisplayName != msg.Author.GetDisplayName() {
-				user.DisplayName = msg.Author.GetDisplayName()
+
+			if user.DisplayName != newDisplayName {
+				user.DisplayName = newDisplayName
 				updated = true
 			}
-			newAvatarURL := msg.Author.GetAvatarURL()
 			if user.AvatarURL != newAvatarURL {
 				user.AvatarURL = newAvatarURL
 				updated = true
