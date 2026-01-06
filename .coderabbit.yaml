@@ -48,6 +48,7 @@ reviews:
         - テストを書く
         - セキュリティ脆弱性を確認する
         - 既存のコードパターンに従う
+  
   tools:
     markdownlint:
       enabled: false
