@@ -20,15 +20,6 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		tlsConfig = "false"
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
-		cfg.TiDBUser,
-		cfg.TiDBPassword,
-		cfg.TiDBHost,
-		cfg.TiDBPort,
-		cfg.TiDBDatabase,
-		tlsConfig,
-	)
-
 	// 環境に応じたログレベルを設定
 	logLevel := logger.Error
 	if cfg.Env == "development" {
@@ -60,6 +51,59 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	)
 
 	log.Printf("GORM logger configured with level: %v, SlowThreshold: %v", logLevel, time.Second)
+
+	// まずデータベース名なしで接続してデータベースを作成
+	dsnWithoutDB := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
+		cfg.TiDBUser,
+		cfg.TiDBPassword,
+		cfg.TiDBHost,
+		cfg.TiDBPort,
+		tlsConfig,
+	)
+
+	tempDB, err := gorm.Open(mysql.Open(dsnWithoutDB), &gorm.Config{
+		Logger: silentLogger,
+	})
+	if err != nil {
+		log.Printf("Failed to connect to TiDB %s@%s:%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, err)
+		return nil, fmt.Errorf("failed to connect to TiDB %s@%s:%s: %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, err)
+	}
+
+	// データベースを作成（存在しない場合のみ）
+	createDBSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", cfg.TiDBDatabase)
+	if err := tempDB.Exec(createDBSQL).Error; err != nil {
+		log.Printf("Failed to create database %s on TiDB %s@%s:%s: %v",
+			cfg.TiDBDatabase, cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, err)
+		return nil, fmt.Errorf("failed to create database %s on TiDB %s@%s:%s: %w",
+			cfg.TiDBDatabase, cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, err)
+	}
+	log.Printf("Database %s ensured on TiDB %s@%s:%s", cfg.TiDBDatabase, cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort)
+
+	// 一時接続をクローズ
+	tempSQLDB, dbErr := tempDB.DB()
+	if dbErr != nil {
+		log.Printf("Failed to get sql.DB from temp connection for TiDB %s@%s:%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, dbErr)
+		return nil, fmt.Errorf("failed to get sql.DB from temp connection (TiDB: %s@%s:%s): %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, dbErr)
+	}
+	if closeErr := tempSQLDB.Close(); closeErr != nil {
+		log.Printf("Failed to close temp connection for TiDB %s@%s:%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, closeErr)
+		// Close失敗は警告のみで処理を続行
+	}
+
+	// データベースを指定して再接続
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
+		cfg.TiDBUser,
+		cfg.TiDBPassword,
+		cfg.TiDBHost,
+		cfg.TiDBPort,
+		cfg.TiDBDatabase,
+		tlsConfig,
+	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: newLogger,
