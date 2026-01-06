@@ -87,6 +87,16 @@ func (m *mockProfileRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *mockProfileRepository) GetByUserIDs(ctx context.Context, userIDs []string) ([]*domain.Profile, error) {
+	var profiles []*domain.Profile
+	for _, userID := range userIDs {
+		if profile, ok := m.profilesByUser[userID]; ok {
+			profiles = append(profiles, profile)
+		}
+	}
+	return profiles, nil
+}
+
 // モックUserRepository
 type mockUserRepository struct {
 	users             map[string]*domain.User
@@ -143,6 +153,14 @@ func (m *mockUserRepository) Delete(ctx context.Context, id string) error {
 		delete(m.users, id)
 	}
 	return nil
+}
+
+func (m *mockUserRepository) GetAll(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	var users []*domain.User
+	for _, u := range m.users {
+		users = append(users, u)
+	}
+	return users, nil
 }
 
 func TestProfileService_GetProfileByUserID(t *testing.T) {

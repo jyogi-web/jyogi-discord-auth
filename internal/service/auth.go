@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/oauth2"
 
 	"github.com/jyogi-web/jyogi-discord-auth/internal/domain"
 	"github.com/jyogi-web/jyogi-discord-auth/internal/repository"
@@ -71,18 +70,18 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (string, 
 		return "", fmt.Errorf("failed to get user info: %w", err)
 	}
 
-	// 3. じょぎサーバーメンバーシップを確認
-	isMember, err := s.discordClient.IsMemberOfGuild(ctx, token, s.guildID, discordUser.ID)
+	// 3. じょぎサーバーのGuild Member情報を取得
+	guildMember, err := s.discordClient.GetGuildMember(ctx, token, s.guildID)
 	if err != nil {
-		return "", fmt.Errorf("failed to check guild membership: %w", err)
+		return "", fmt.Errorf("failed to get guild member: %w", err)
 	}
 
-	if !isMember {
+	if guildMember == nil {
 		return "", domain.ErrNotGuildMember
 	}
 
 	// 4. ユーザーをデータベースに保存または更新
-	user, err := s.upsertUser(ctx, discordUser, token)
+	user, err := s.upsertUser(ctx, discordUser, guildMember)
 	if err != nil {
 		return "", fmt.Errorf("failed to upsert user: %w", err)
 	}
@@ -97,7 +96,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (string, 
 }
 
 // upsertUser はユーザーを作成または更新します
-func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User, token *oauth2.Token) (*domain.User, error) {
+func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User, guildMember *discord.GuildMember) (*domain.User, error) {
 	// 既存のユーザーを検索
 	existingUser, err := s.userRepo.GetByDiscordID(ctx, discordUser.ID)
 	if err != nil {
@@ -111,11 +110,27 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 
 	now := time.Now()
 
+	// GuildMember情報から追加フィールドを取得
+	var guildNickname *string
+	if guildMember.Nick != nil && *guildMember.Nick != "" {
+		guildNickname = guildMember.Nick
+	}
+
+	var joinedAt *time.Time
+	if guildMember.JoinedAt != "" {
+		if parsedTime, err := time.Parse(time.RFC3339, guildMember.JoinedAt); err == nil {
+			joinedAt = &parsedTime
+		}
+	}
+
 	if existingUser != nil {
 		// 既存ユーザーを更新
 		existingUser.Username = discordUser.Username
 		existingUser.DisplayName = discordUser.GetDisplayName()
 		existingUser.AvatarURL = discordUser.GetAvatarURL()
+		existingUser.GuildNickname = guildNickname
+		existingUser.GuildRoles = guildMember.Roles
+		existingUser.JoinedAt = joinedAt
 		existingUser.LastLoginAt = &now
 		existingUser.UpdatedAt = now
 
@@ -128,14 +143,17 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 
 	// 新規ユーザーを作成
 	user := &domain.User{
-		ID:          uuid.New().String(),
-		DiscordID:   discordUser.ID,
-		Username:    discordUser.Username,
-		DisplayName: discordUser.GetDisplayName(),
-		AvatarURL:   discordUser.GetAvatarURL(),
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		LastLoginAt: &now,
+		ID:            uuid.New().String(),
+		DiscordID:     discordUser.ID,
+		Username:      discordUser.Username,
+		DisplayName:   discordUser.GetDisplayName(),
+		AvatarURL:     discordUser.GetAvatarURL(),
+		GuildNickname: guildNickname,
+		GuildRoles:    guildMember.Roles,
+		JoinedAt:      joinedAt,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		LastLoginAt:   &now,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
