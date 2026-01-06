@@ -54,10 +54,31 @@ func (c *Client) ExchangeCode(ctx context.Context, code string) (*oauth2.Token, 
 
 // User はDiscordユーザー情報を表します
 type User struct {
-	ID            string `json:"id"`
-	Username      string `json:"username"`
-	Discriminator string `json:"discriminator"`
-	Avatar        string `json:"avatar"`
+	ID            string  `json:"id"`
+	Username      string  `json:"username"`
+	Discriminator string  `json:"discriminator"`
+	GlobalName    *string `json:"global_name"` // Display name
+	Avatar        *string `json:"avatar"`      // Avatar hash
+}
+
+// GetAvatarURL はアバターのURLを返します
+// アバターが設定されていない場合は空文字列を返します
+func (u *User) GetAvatarURL() string {
+	if u.Avatar == nil || *u.Avatar == "" {
+		return ""
+	}
+	// Discord CDNのアバターURL
+	// https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png
+	return fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", u.ID, *u.Avatar)
+}
+
+// GetDisplayName は表示名を返します
+// GlobalNameが設定されていない場合はUsernameを返します
+func (u *User) GetDisplayName() string {
+	if u.GlobalName != nil && *u.GlobalName != "" {
+		return *u.GlobalName
+	}
+	return u.Username
 }
 
 // GetUser はアクセストークンを使用してユーザー情報を取得します

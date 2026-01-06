@@ -116,15 +116,12 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 	}
 
 	now := time.Now()
-	avatarURL := ""
-	if discordUser.Avatar != "" {
-		avatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", discordUser.ID, discordUser.Avatar)
-	}
 
 	if existingUser != nil {
 		// 既存ユーザーを更新
 		existingUser.Username = discordUser.Username
-		existingUser.AvatarURL = avatarURL
+		existingUser.DisplayName = discordUser.GetDisplayName()
+		existingUser.AvatarURL = discordUser.GetAvatarURL()
 		existingUser.LastLoginAt = &now
 		existingUser.UpdatedAt = now
 
@@ -140,7 +137,8 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 		ID:          uuid.New().String(),
 		DiscordID:   discordUser.ID,
 		Username:    discordUser.Username,
-		AvatarURL:   avatarURL,
+		DisplayName: discordUser.GetDisplayName(),
+		AvatarURL:   discordUser.GetAvatarURL(),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		LastLoginAt: &now,

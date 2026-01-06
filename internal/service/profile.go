@@ -89,11 +89,13 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 		// ユーザーが存在しない場合は作成
 		if user == nil {
 			user = &domain.User{
-				ID:        uuid.New().String(),
-				DiscordID: msg.Author.ID,
-				Username:  msg.Author.Username,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				ID:          uuid.New().String(),
+				DiscordID:   msg.Author.ID,
+				Username:    msg.Author.Username,
+				DisplayName: msg.Author.GetDisplayName(),
+				AvatarURL:   msg.Author.GetAvatarURL(),
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
 			}
 
 			if err := s.userRepo.Create(ctx, user); err != nil {
@@ -103,6 +105,28 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 			}
 
 			log.Printf("Created new user: %s (discord_id: %s)", user.Username, user.DiscordID)
+		} else {
+			// 既存ユーザーの場合、表示名とアバターURLを更新
+			updated := false
+			if user.DisplayName != msg.Author.GetDisplayName() {
+				user.DisplayName = msg.Author.GetDisplayName()
+				updated = true
+			}
+			newAvatarURL := msg.Author.GetAvatarURL()
+			if user.AvatarURL != newAvatarURL {
+				user.AvatarURL = newAvatarURL
+				updated = true
+			}
+
+			if updated {
+				user.UpdatedAt = time.Now()
+				if err := s.userRepo.Update(ctx, user); err != nil {
+					log.Printf("Error updating user for discord_id %s: %v", msg.Author.ID, err)
+					errorCount++
+					continue
+				}
+				log.Printf("Updated user info for %s (discord_id: %s)", user.Username, user.DiscordID)
+			}
 		}
 
 		// プロフィールを作成または更新

@@ -14,6 +14,7 @@ type User struct {
 	ID          string       `gorm:"primaryKey;type:varchar(36)"`
 	DiscordID   string       `gorm:"uniqueIndex;type:varchar(255);not null"`
 	Username    string       `gorm:"type:varchar(255);not null"`
+	DisplayName string       `gorm:"type:varchar(255)"`
 	AvatarURL   string       `gorm:"type:varchar(512)"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time    `gorm:"autoUpdateTime"`
@@ -33,6 +34,7 @@ func (u *User) ToDomain() *domain.User {
 		ID:          u.ID,
 		DiscordID:   u.DiscordID,
 		Username:    u.Username,
+		DisplayName: u.DisplayName,
 		AvatarURL:   u.AvatarURL,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
@@ -49,6 +51,7 @@ func FromDomainUser(u *domain.User) *User {
 		ID:          u.ID,
 		DiscordID:   u.DiscordID,
 		Username:    u.Username,
+		DisplayName: u.DisplayName,
 		AvatarURL:   u.AvatarURL,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,

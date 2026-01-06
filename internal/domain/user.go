@@ -10,6 +10,7 @@ type User struct {
 	ID          string
 	DiscordID   string
 	Username    string
+	DisplayName string
 	AvatarURL   string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

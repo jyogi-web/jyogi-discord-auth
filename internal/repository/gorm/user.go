@@ -76,6 +76,7 @@ func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
 
 	result := r.db.WithContext(ctx).Model(&User{}).Where("id = ?", u.ID).Updates(map[string]interface{}{
 		"username":      u.Username,
+		"display_name":  u.DisplayName,
 		"avatar_url":    u.AvatarURL,
 		"updated_at":    u.UpdatedAt,
 		"last_login_at": u.LastLoginAt,
