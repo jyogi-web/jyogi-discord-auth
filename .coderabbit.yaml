@@ -1,0 +1,64 @@
+# CodeRabbit Configuration
+# じょぎメンバー認証システム用
+
+# 言語設定: 日本語
+language: ja
+
+# トーン指示
+tone_instructions: "日本語で丁寧にレビューしてください。セキュリティ、パフォーマンス、エラーハンドリング、テストカバレッジを重視してください。既存のコードパターンとの整合性を確認してください。"
+
+# 早期アクセス機能
+early_access: false
+
+# レビュー設定
+reviews:
+  # レビュープロファイル
+  profile: chill
+
+  # 高レベルサマリー
+  high_level_summary: true
+
+  # レビューステータス
+  review_status: true
+
+  # ウォークスルーの折りたたみ
+  collapse_walkthrough: false
+
+  # 自動レビュー設定
+  auto_review:
+    enabled: true
+    drafts: false
+
+  # 変更リクエストワークフロー
+  request_changes_workflow: false
+
+  # パスフィルター
+  path_filters:
+    - "!*.sum"
+    - "!*.lock"
+    - "!*.gen.go"
+    - "!vendor/**"
+
+  # パス別指示
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Goのベストプラクティスに従ってください。
+        - エラーハンドリングを適切に行う
+        - テストを書く
+        - セキュリティ脆弱性を確認する
+        - 既存のコードパターンに従う
+  
+  tools:
+    markdownlint:
+      enabled: false
+    
+# チャット設定
+chat:
+  auto_reply: false
+
+# コード生成設定
+code_generation:
+  docstrings:
+    language: ja
+  
