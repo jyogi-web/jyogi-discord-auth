@@ -82,8 +82,17 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	log.Printf("Database %s ensured on TiDB %s@%s:%s", cfg.TiDBDatabase, cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort)
 
 	// 一時接続をクローズ
-	if sqlDB, dbErr := tempDB.DB(); dbErr == nil {
-		sqlDB.Close()
+	tempSQLDB, dbErr := tempDB.DB()
+	if dbErr != nil {
+		log.Printf("Failed to get sql.DB from temp connection for TiDB %s@%s:%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, dbErr)
+		return nil, fmt.Errorf("failed to get sql.DB from temp connection (TiDB: %s@%s:%s): %w",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, dbErr)
+	}
+	if closeErr := tempSQLDB.Close(); closeErr != nil {
+		log.Printf("Failed to close temp connection for TiDB %s@%s:%s: %v",
+			cfg.TiDBUser, cfg.TiDBHost, cfg.TiDBPort, closeErr)
+		// Close失敗は警告のみで処理を続行
 	}
 
 	// データベースを指定して再接続
