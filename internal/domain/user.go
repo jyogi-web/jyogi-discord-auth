@@ -7,14 +7,17 @@ import (
 
 // User はじょぎメンバーのユーザーを表します
 type User struct {
-	ID          string
-	DiscordID   string
-	Username    string
-	DisplayName string
-	AvatarURL   string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	LastLoginAt *time.Time
+	ID            string
+	DiscordID     string
+	Username      string
+	DisplayName   string
+	AvatarURL     string
+	GuildNickname *string    // サーバー固有のニックネーム
+	GuildRoles    []string   // ロールIDの配列
+	JoinedAt      *time.Time // サーバー参加日時
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	LastLoginAt   *time.Time
 }
 
 // Validate はユーザーデータが有効かどうかを確認します

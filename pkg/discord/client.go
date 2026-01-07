@@ -106,33 +106,52 @@ func (c *Client) GetUser(ctx context.Context, token *oauth2.Token) (*User, error
 
 // GuildMember はギルドメンバー情報を表します
 type GuildMember struct {
-	User     User     `json:"user"`
-	Roles    []string `json:"roles"`
-	JoinedAt string   `json:"joined_at"`
+	User     *User    `json:"user"`              // ユーザー情報（nullable）
+	Nick     *string  `json:"nick"`              // サーバー固有のニックネーム（nullable）
+	Avatar   *string  `json:"avatar"`            // サーバー固有のアバター（nullable）
+	Roles    []string `json:"roles"`             // ロールIDの配列
+	JoinedAt string   `json:"joined_at"`         // サーバー参加日時（ISO8601形式）
+	Pending  *bool    `json:"pending,omitempty"` // メンバーシップスクリーニング保留中かどうか
+	Deaf     bool     `json:"deaf"`              // サーバーミュート状態
+	Mute     bool     `json:"mute"`              // サーバーデフ状態
 }
 
-// IsMemberOfGuild はユーザーが指定されたギルドのメンバーかどうかを確認します
-func (c *Client) IsMemberOfGuild(ctx context.Context, token *oauth2.Token, guildID, userID string) (bool, error) {
+// GetGuildMember はユーザーのギルドメンバー情報を取得します
+func (c *Client) GetGuildMember(ctx context.Context, token *oauth2.Token, guildID string) (*GuildMember, error) {
 	client := c.config.Client(ctx, token)
 
 	url := fmt.Sprintf("https://discord.com/api/users/@me/guilds/%s/member", guildID)
 	resp, err := client.Get(url)
 	if err != nil {
-		return false, fmt.Errorf("failed to check guild membership: %w", err)
+		return nil, fmt.Errorf("failed to get guild member info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// 404はメンバーではないことを示す
 	if resp.StatusCode == http.StatusNotFound {
-		return false, nil
+		return nil, nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return false, fmt.Errorf("discord API returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("discord API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return true, nil
+	var member GuildMember
+	if err := json.NewDecoder(resp.Body).Decode(&member); err != nil {
+		return nil, fmt.Errorf("failed to decode guild member info: %w", err)
+	}
+
+	return &member, nil
+}
+
+// IsMemberOfGuild はユーザーが指定されたギルドのメンバーかどうかを確認します
+func (c *Client) IsMemberOfGuild(ctx context.Context, token *oauth2.Token, guildID, userID string) (bool, error) {
+	member, err := c.GetGuildMember(ctx, token, guildID)
+	if err != nil {
+		return false, err
+	}
+	return member != nil, nil
 }
 
 // Message はDiscordメッセージを表します

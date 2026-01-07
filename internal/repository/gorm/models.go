@@ -11,14 +11,17 @@ import (
 
 // User GORM model
 type User struct {
-	ID          string       `gorm:"primaryKey;type:varchar(36)"`
-	DiscordID   string       `gorm:"uniqueIndex;type:varchar(255);not null"`
-	Username    string       `gorm:"type:varchar(255);not null"`
-	DisplayName string       `gorm:"type:varchar(255)"`
-	AvatarURL   string       `gorm:"type:varchar(512)"`
-	CreatedAt   time.Time    `gorm:"autoCreateTime"`
-	UpdatedAt   time.Time    `gorm:"autoUpdateTime"`
-	LastLoginAt sql.NullTime `gorm:"type:datetime"`
+	ID            string       `gorm:"primaryKey;type:varchar(36)"`
+	DiscordID     string       `gorm:"uniqueIndex;type:varchar(255);not null"`
+	Username      string       `gorm:"type:varchar(255);not null"`
+	DisplayName   string       `gorm:"type:varchar(255)"`
+	AvatarURL     string       `gorm:"type:varchar(512)"`
+	GuildNickname sql.NullString `gorm:"type:varchar(255)"`
+	GuildRoles    string       `gorm:"type:text"` // JSON配列として保存
+	JoinedAt      sql.NullTime `gorm:"type:datetime"`
+	CreatedAt     time.Time    `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time    `gorm:"autoUpdateTime"`
+	LastLoginAt   sql.NullTime `gorm:"type:datetime"`
 }
 
 func (User) TableName() string {
@@ -30,15 +33,34 @@ func (u *User) ToDomain() *domain.User {
 	if u.LastLoginAt.Valid {
 		lastLoginAt = &u.LastLoginAt.Time
 	}
+
+	var guildNickname *string
+	if u.GuildNickname.Valid {
+		guildNickname = &u.GuildNickname.String
+	}
+
+	var guildRoles []string
+	if u.GuildRoles != "" {
+		_ = json.Unmarshal([]byte(u.GuildRoles), &guildRoles)
+	}
+
+	var joinedAt *time.Time
+	if u.JoinedAt.Valid {
+		joinedAt = &u.JoinedAt.Time
+	}
+
 	return &domain.User{
-		ID:          u.ID,
-		DiscordID:   u.DiscordID,
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
-		AvatarURL:   u.AvatarURL,
-		CreatedAt:   u.CreatedAt,
-		UpdatedAt:   u.UpdatedAt,
-		LastLoginAt: lastLoginAt,
+		ID:            u.ID,
+		DiscordID:     u.DiscordID,
+		Username:      u.Username,
+		DisplayName:   u.DisplayName,
+		AvatarURL:     u.AvatarURL,
+		GuildNickname: guildNickname,
+		GuildRoles:    guildRoles,
+		JoinedAt:      joinedAt,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		LastLoginAt:   lastLoginAt,
 	}
 }
 
@@ -47,15 +69,35 @@ func FromDomainUser(u *domain.User) *User {
 	if u.LastLoginAt != nil {
 		lastLoginAt = sql.NullTime{Time: *u.LastLoginAt, Valid: true}
 	}
+
+	var guildNickname sql.NullString
+	if u.GuildNickname != nil {
+		guildNickname = sql.NullString{String: *u.GuildNickname, Valid: true}
+	}
+
+	var guildRolesJSON string
+	if u.GuildRoles != nil {
+		rolesBytes, _ := json.Marshal(u.GuildRoles)
+		guildRolesJSON = string(rolesBytes)
+	}
+
+	var joinedAt sql.NullTime
+	if u.JoinedAt != nil {
+		joinedAt = sql.NullTime{Time: *u.JoinedAt, Valid: true}
+	}
+
 	return &User{
-		ID:          u.ID,
-		DiscordID:   u.DiscordID,
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
-		AvatarURL:   u.AvatarURL,
-		CreatedAt:   u.CreatedAt,
-		UpdatedAt:   u.UpdatedAt,
-		LastLoginAt: lastLoginAt,
+		ID:            u.ID,
+		DiscordID:     u.DiscordID,
+		Username:      u.Username,
+		DisplayName:   u.DisplayName,
+		AvatarURL:     u.AvatarURL,
+		GuildNickname: guildNickname,
+		GuildRoles:    guildRolesJSON,
+		JoinedAt:      joinedAt,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		LastLoginAt:   lastLoginAt,
 	}
 }
 

@@ -14,6 +14,11 @@ type UserWithProfile struct {
 	AvatarURL   string  `json:"avatar_url"`
 	LastLoginAt *string `json:"last_login_at,omitempty"`
 
+	// Guild Member情報（オプション）
+	GuildNickname *string  `json:"guild_nickname,omitempty"`
+	GuildRoles    []string `json:"guild_roles,omitempty"`
+	JoinedAt      *string  `json:"joined_at,omitempty"`
+
 	// プロフィール情報（オプション）
 	Profile *ProfileData `json:"profile,omitempty"`
 }
@@ -41,6 +46,18 @@ func NewUserWithProfile(user *domain.User, profile *domain.Profile) *UserWithPro
 	if user.LastLoginAt != nil {
 		lastLogin := user.LastLoginAt.Format("2006-01-02T15:04:05Z07:00")
 		dto.LastLoginAt = &lastLogin
+	}
+
+	// Guild Member情報の追加
+	if user.GuildNickname != nil {
+		dto.GuildNickname = user.GuildNickname
+	}
+	if len(user.GuildRoles) > 0 {
+		dto.GuildRoles = user.GuildRoles
+	}
+	if user.JoinedAt != nil {
+		joinedAt := user.JoinedAt.Format("2006-01-02T15:04:05Z07:00")
+		dto.JoinedAt = &joinedAt
 	}
 
 	// プロフィール情報が存在する場合は追加
