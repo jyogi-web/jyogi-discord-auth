@@ -76,7 +76,7 @@ func FromDomainUser(u *domain.User) *User {
 	}
 
 	var guildRolesJSON string
-	if len(u.GuildRoles) > 0 {
+	if u.GuildRoles != nil {
 		rolesBytes, _ := json.Marshal(u.GuildRoles)
 		guildRolesJSON = string(rolesBytes)
 	}

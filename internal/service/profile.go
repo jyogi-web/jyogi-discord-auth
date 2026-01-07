@@ -95,6 +95,7 @@ func (s *ProfileService) SyncProfiles(ctx context.Context) error {
 				Username:    msg.Author.Username,
 				DisplayName: msg.Author.GetDisplayName(),
 				AvatarURL:   msg.Author.GetAvatarURL(),
+				GuildRoles:  []string{},
 				CreatedAt:   time.Now(),
 				UpdatedAt:   time.Now(),
 			}

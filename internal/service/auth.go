@@ -123,13 +123,18 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 		}
 	}
 
+	guildRoles := guildMember.Roles
+	if guildRoles == nil || len(guildRoles) == 0 {
+		guildRoles = []string{}
+	}
+
 	if existingUser != nil {
 		// 既存ユーザーを更新
 		existingUser.Username = discordUser.Username
 		existingUser.DisplayName = discordUser.GetDisplayName()
 		existingUser.AvatarURL = discordUser.GetAvatarURL()
 		existingUser.GuildNickname = guildNickname
-		existingUser.GuildRoles = guildMember.Roles
+		existingUser.GuildRoles = guildRoles
 		existingUser.JoinedAt = joinedAt
 		existingUser.LastLoginAt = &now
 		existingUser.UpdatedAt = now
@@ -149,7 +154,7 @@ func (s *AuthService) upsertUser(ctx context.Context, discordUser *discord.User,
 		DisplayName:   discordUser.GetDisplayName(),
 		AvatarURL:     discordUser.GetAvatarURL(),
 		GuildNickname: guildNickname,
-		GuildRoles:    guildMember.Roles,
+		GuildRoles:    guildRoles,
 		JoinedAt:      joinedAt,
 		CreatedAt:     now,
 		UpdatedAt:     now,
