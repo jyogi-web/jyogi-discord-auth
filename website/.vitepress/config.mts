@@ -33,7 +33,8 @@ export default defineConfig({
                                 { text: '開発環境のセットアップ', link: '/guide/contributing' },
                                 { text: 'アーキテクチャ', link: '/guide/architecture' },
                                 { text: 'デプロイ', link: '/guide/deployment' },
-                                { text: 'プロフィール同期', link: '/guide/profile-sync' }
+                                { text: 'プロフィール同期', link: '/guide/profile-sync' },
+                                { text: 'データベース設計', link: '/reference/database' }
                             ]
                         }
                     ],
@@ -41,7 +42,8 @@ export default defineConfig({
                         {
                             text: 'リファレンス',
                             items: [
-                                { text: 'API リファレンス', link: '/reference/api' }
+                                { text: 'API リファレンス', link: '/reference/api' },
+                                { text: 'データベース設計', link: '/reference/database' }
                             ]
                         }
                     ]
