@@ -6,7 +6,8 @@ import MemberList from '@/components/MemberList';
 import type { User, MembersResponse } from '@/types';
 
 async function getData(token: string): Promise<{ user: User | null; members: User[] }> {
-  const authServerUrl = process.env.NEXT_PUBLIC_AUTH_SERVER_URL;
+  // Use server-side environment variable if available, fallback to public one if needed (e.g. local dev consistency)
+  const authServerUrl = process.env.AUTH_SERVER_URL || process.env.NEXT_PUBLIC_AUTH_SERVER_URL;
   
   try {
     const [userRes, membersRes] = await Promise.all([

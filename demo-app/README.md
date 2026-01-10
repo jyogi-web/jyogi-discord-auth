@@ -38,6 +38,14 @@ NEXT_PUBLIC_AUTH_SERVER_URL=http://localhost:8080
 
 # アプリURL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# OAuth2設定
+# 注意: NEXT_PUBLIC_CLIENT_ID (公開) と CLIENT_ID (秘密) は同じ値ですが、
+# 用途（クライアント側での認可URL生成 vs サーバー側でのトークン交換）に応じて使い分けてください。
+NEXT_PUBLIC_CLIENT_ID=your_client_id
+CLIENT_ID=your_client_id
+CLIENT_SECRET=your_client_secret
+REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 ### 3. 認証サーバーの設定
