@@ -6,18 +6,22 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
+  // Open Redirect対策: 許可されたエラーコードのみをパスさせる
+  const allowedErrors = new Set(['access_denied', 'server_error', 'token_exchange_failed']);
   if (error) {
-    return NextResponse.redirect(new URL(`/?error=${error}`, request.url));
+    const safeError = allowedErrors.has(error) ? error : 'unknown_error';
+    return NextResponse.redirect(new URL(`/?error=${safeError}`, request.url));
   }
 
   if (!code) {
     return NextResponse.json({ error: 'No code provided' }, { status: 400 });
   }
 
-  const authServerUrl = process.env.NEXT_PUBLIC_AUTH_SERVER_URL;
-  const clientId = process.env.CLIENT_ID; // Server-side env var
-  const clientSecret = process.env.CLIENT_SECRET; // Server-side env var
-  const redirectUri = process.env.REDIRECT_URI; // Server-side env var
+  // サーバーサイド専用の環境変数を使用 (NEXT_PUBLIC_ を避ける)
+  const authServerUrl = process.env.AUTH_SERVER_URL || process.env.NEXT_PUBLIC_AUTH_SERVER_URL;
+  const clientId = process.env.CLIENT_ID;
+  const clientSecret = process.env.CLIENT_SECRET;
+  const redirectUri = process.env.REDIRECT_URI;
 
   if (!authServerUrl || !clientId || !clientSecret || !redirectUri) {
     console.error('Missing environment variables');

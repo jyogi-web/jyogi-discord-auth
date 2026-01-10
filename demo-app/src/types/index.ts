@@ -21,8 +21,6 @@ export interface User {
 
 export interface MembersResponse {
   members: User[];
-  limit: number;
-  offset: number;
   count: number;
 }
 

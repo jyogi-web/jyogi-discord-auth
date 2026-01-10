@@ -26,7 +26,7 @@ export default function UserProfile({ user }: UserProfileProps) {
             </div>
           )}
           <div>
-            <h3 className="text-xl font-bold">{user.display_name || user.username}</h3>
+            <h3 className="text-xl font-bold">{user.display_name}</h3>
             <p className="text-gray-600">@{user.username}</p>
           </div>
         </div>
