@@ -24,6 +24,7 @@ export default defineConfig({
                             text: '利用者向け (Client Integrators)',
                             items: [
                                 { text: 'クイックスタート (クライアント統合)', link: '/guide/client-integration' },
+                                { text: 'Rails: DB直接参照', link: '/guide/rails-direct-db' },
                                 { text: 'API リファレンス', link: '/reference/api' }
                             ]
                         },
@@ -34,6 +35,8 @@ export default defineConfig({
                                 { text: 'アーキテクチャ', link: '/guide/architecture' },
                                 { text: 'デプロイ', link: '/guide/deployment' },
                                 { text: 'プロフィール同期', link: '/guide/profile-sync' },
+                                { text: 'テストガイド', link: '/guide/testing' },
+                                { text: 'トラブルシューティング', link: '/guide/troubleshooting' },
                                 { text: 'データベース設計', link: '/reference/database' }
                             ]
                         }
@@ -43,7 +46,8 @@ export default defineConfig({
                             text: 'リファレンス',
                             items: [
                                 { text: 'API リファレンス', link: '/reference/api' },
-                                { text: 'データベース設計', link: '/reference/database' }
+                                { text: 'データベース設計', link: '/reference/database' },
+                                { text: '環境変数', link: '/reference/environment' }
                             ]
                         }
                     ]
@@ -86,6 +90,7 @@ export default defineConfig({
                             text: 'For Client Integrators',
                             items: [
                                 { text: 'Quick Start (Client Integration)', link: '/en/guide/client-integration' },
+                                { text: 'Rails: Direct DB Access', link: '/en/guide/rails-direct-db' },
                                 { text: 'API Reference', link: '/en/reference/api' }
                             ]
                         },
@@ -95,7 +100,9 @@ export default defineConfig({
                                 { text: 'Setup Guide', link: '/en/guide/contributing' },
                                 { text: 'Architecture', link: '/en/guide/architecture' },
                                 { text: 'Deployment', link: '/en/guide/deployment' },
-                                { text: 'Profile Sync', link: '/en/guide/profile-sync' }
+                                { text: 'Profile Sync', link: '/en/guide/profile-sync' },
+                                { text: 'Testing Guide', link: '/en/guide/testing' },
+                                { text: 'Troubleshooting', link: '/en/guide/troubleshooting' }
                             ]
                         }
                     ],
@@ -103,7 +110,8 @@ export default defineConfig({
                         {
                             text: 'Reference',
                             items: [
-                                { text: 'API Reference', link: '/en/reference/api' }
+                                { text: 'API Reference', link: '/en/reference/api' },
+                                { text: 'Environment Variables', link: '/en/reference/environment' }
                             ]
                         }
                     ]

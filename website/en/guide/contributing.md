@@ -4,7 +4,7 @@ This guide explains how to set up the development environment for the Jyogi Memb
 
 ## Prerequisites
 
-1. Go 1.23 or higher installed
+1. Go 1.25 or higher installed
 2. Application created in Discord Developer Portal
 3. Server ID of the Jyogi Discord server obtained
 
@@ -39,18 +39,13 @@ Edit the `.env` file and set the following values:
 - `DISCORD_PROFILE_CHANNEL`: Introduction channel ID
 - `JWT_SECRET`: Secret key for JWT signing (at least 32 characters)
 
-## 4. Database Migration
-
-```bash
-./scripts/migrate.sh
-```
-
-## 5. Start the Server
+## 4. Start the Server
 
 ```bash
 go run cmd/server/main.go
 ```
 
+The database schema will be automatically migrated when the server starts.
 Once the server starts, access `http://localhost:8080` in your browser.
 
 ## Development with Docker
