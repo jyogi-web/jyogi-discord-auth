@@ -27,6 +27,7 @@ export default defineConfig({
                     text: '開発者向け (Contributors)',
                     items: [
                         { text: '開発環境のセットアップ', link: '/guide/contributing' },
+                        { text: 'クライアントアプリ登録', link: '/guide/client-registration' },
                         { text: 'アーキテクチャ', link: '/guide/architecture' },
                         { text: 'デプロイ', link: '/guide/deployment' },
                         { text: 'プロフィール同期', link: '/guide/profile-sync' },
