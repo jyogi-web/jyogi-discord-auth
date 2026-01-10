@@ -48,6 +48,27 @@ export default function UserProfile({ user }: UserProfileProps) {
                <dd>{user.guild_nickname}</dd>
              </div>
           )}
+          {user.joined_at && (
+            <div>
+              <dt className="text-sm text-gray-500">サーバー参加日</dt>
+              <dd>{new Date(user.joined_at).toLocaleString('ja-JP')}</dd>
+            </div>
+          )}
+          {user.guild_roles && user.guild_roles.length > 0 && (
+            <div>
+              <dt className="text-sm text-gray-500">ロール</dt>
+              <dd className="flex flex-wrap gap-2">
+                {user.guild_roles.map((roleId) => (
+                  <span
+                    key={roleId}
+                    className="inline-block px-2 py-1 text-xs rounded bg-blue-100 text-blue-800"
+                  >
+                    {roleId}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
 

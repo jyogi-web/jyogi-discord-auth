@@ -42,34 +42,35 @@
 
 **Fields**:
 
-- `id` (TEXT, PRIMARY KEY): ユーザーID (UUID)
-- `discord_id` (TEXT, UNIQUE, NOT NULL): Discord ユーザーID
-- `username` (TEXT, NOT NULL): Discordユーザー名
-- `avatar_url` (TEXT): アバターURL
+- `id` (VARCHAR(36), PRIMARY KEY): ユーザーID (UUID)
+- `discord_id` (VARCHAR(255), UNIQUE, NOT NULL): Discord ユーザーID
+- `username` (VARCHAR(255), NOT NULL): Discordユーザー名
+- `display_name` (VARCHAR(255)): 表示名
+- `avatar_url` (VARCHAR(512)): アバターURL
 - `guild_roles` (TEXT): ギルド内ロール（JSON文字列配列）
-- `guild_nickname` (TEXT): ギルド内ニックネーム
-- `joined_at` (TIMESTAMP): ギルド参加日時
-- `created_at` (TIMESTAMP, NOT NULL): 作成日時
-- `updated_at` (TIMESTAMP, NOT NULL): 更新日時
-- `last_login_at` (TIMESTAMP): 最終ログイン日時
+- `guild_nickname` (VARCHAR(255)): ギルド内ニックネーム
+- `joined_at` (DATETIME): ギルド参加日時
+- `created_at` (DATETIME, NOT NULL): 作成日時
+- `updated_at` (DATETIME, NOT NULL): 更新日時
+- `last_login_at` (DATETIME): 最終ログイン日時
 
 **SQL**:
 
 ```sql
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    discord_id TEXT UNIQUE NOT NULL,
-    username TEXT NOT NULL,
-    avatar_url TEXT,
+    id VARCHAR(36) PRIMARY KEY,
+    discord_id VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255),
+    avatar_url VARCHAR(512),
     guild_roles TEXT,
-    guild_nickname TEXT,
-    joined_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_login_at TIMESTAMP
+    guild_nickname VARCHAR(255),
+    joined_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at DATETIME
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
 CREATE INDEX IF NOT EXISTS idx_users_joined_at ON users(joined_at);
 ```
 

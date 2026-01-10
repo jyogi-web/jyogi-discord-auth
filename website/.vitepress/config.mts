@@ -111,6 +111,7 @@ export default defineConfig({
                             text: 'Reference',
                             items: [
                                 { text: 'API Reference', link: '/en/reference/api' },
+                                { text: 'Database Design', link: '/reference/database' },
                                 { text: 'Environment Variables', link: '/en/reference/environment' }
                             ]
                         }

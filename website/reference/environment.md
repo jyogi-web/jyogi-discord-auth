@@ -44,3 +44,21 @@
 | `TIDB_DB_PASSWORD` | TiDBパスワード |
 | `TIDB_DB_DATABASE` | データベース名 |
 | `TIDB_DISABLE_TLS` | TLS接続を無効にするか (`true` / `false`) |
+
+## セキュリティのベストプラクティス
+
+### シークレット管理
+
+- **開発環境**: `.env` ファイルを使用し、必ず `.gitignore` に追加してください。
+- **本番環境**: 環境変数として直接設定するか、GCP Secret Manager などのシークレット管理サービスを使用してください。
+- **シークレットの生成**: `JWT_SECRET` などは以下のコマンドで生成できます：
+  ```bash
+  openssl rand -base64 32
+  ```
+
+### 本番環境の必須設定
+
+本番環境（`ENV=production`）では以下の設定を必ず有効にしてください：
+
+- `HTTPS_ONLY=true`: HTTPS 接続を強制
+- `CORS_ALLOWED_ORIGINS`: 本番ドメインのみを許可

@@ -39,6 +39,21 @@ test:
   auth_db:
     <<: *default
     database: jyogi_auth_test
+
+production:
+  primary:
+    <<: *default
+    database: my_app_production
+    password: <%= ENV["MY_APP_DATABASE_PASSWORD"] %>
+  auth_db:
+    <<: *default
+    database: <%= ENV.fetch("AUTH_DB_DATABASE") { "jyogi_auth" } %>
+    host: <%= ENV.fetch("AUTH_DB_HOST") { "10.0.0.5" } %> # Cloud SQL Private IP等
+    port: 4000
+    username: <%= ENV.fetch("AUTH_DB_USERNAME") %>
+    password: <%= ENV.fetch("AUTH_DB_PASSWORD") %>
+    # 認証DBは読み取り専用レプリカに向けることも検討してください
+    # replica: true 
 ```
 
 ## 2. 抽象クラスの作成
@@ -61,6 +76,10 @@ class AuthBase < ApplicationRecord
   end
 end
 ```
+
+> [!NOTE]
+> `readonly?` を `true` に設定しているため、このモデルを通じて `create`, `update`, `destroy` などを実行しようとすると、`ActiveRecord::ReadOnlyRecord` 例外が発生します。
+> これにより、誤って認証データベースのデータを変更してしまう事故を防げます。
 
 ## 3. モデルの定義
 

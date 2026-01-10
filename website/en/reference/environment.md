@@ -44,3 +44,21 @@ Required when using the profile synchronization feature.
 | `TIDB_DB_PASSWORD` | TiDB Password |
 | `TIDB_DB_DATABASE` | Database Name |
 | `TIDB_DISABLE_TLS` | Disable TLS connection (`true` / `false`) |
+
+## Security Best Practices
+
+### Secret Management
+
+- **Development**: Use a `.env` file and ensure it is added to `.gitignore`.
+- **Production**: Set environment variables directly or use a secret management service like GCP Secret Manager.
+- **Generating Secrets**: You can generate secure secrets like `JWT_SECRET` using the following command:
+  ```bash
+  openssl rand -base64 32
+  ```
+
+### Mandatory Production Settings
+
+Ensure the following settings are enabled in production (`ENV=production`):
+
+- `HTTPS_ONLY=true`: Enforce HTTPS connections.
+- `CORS_ALLOWED_ORIGINS`: Restrict to production domains only.

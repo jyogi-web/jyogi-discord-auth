@@ -15,6 +15,9 @@ type APIHandler struct {
 
 // NewAPIHandler は新しいAPIハンドラーを作成します
 func NewAPIHandler(authService *service.AuthService) *APIHandler {
+	if authService == nil {
+		panic("authService is nil")
+	}
 	return &APIHandler{
 		authService: authService,
 	}

@@ -133,7 +133,7 @@ export async function GET(request: Request) {
   const data = await tokenRes.json()
   
   // アクセストークンをCookieに保存 (httpOnly)
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.set('access_token', data.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -187,7 +187,7 @@ async function getUser(token: string): Promise<UserProfile | null> {
 }
 
 export default async function MePage() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get('access_token')
 
   if (!token) {

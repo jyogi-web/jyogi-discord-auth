@@ -39,6 +39,21 @@ test:
   auth_db:
     <<: *default
     database: jyogi_auth_test
+
+production:
+  primary:
+    <<: *default
+    database: my_app_production
+    password: <%= ENV["MY_APP_DATABASE_PASSWORD"] %>
+  auth_db:
+    <<: *default
+    database: <%= ENV.fetch("AUTH_DB_DATABASE") { "jyogi_auth" } %>
+    host: <%= ENV.fetch("AUTH_DB_HOST") { "10.0.0.5" } %> # e.g., Cloud SQL Private IP
+    port: 4000
+    username: <%= ENV.fetch("AUTH_DB_USERNAME") %>
+    password: <%= ENV.fetch("AUTH_DB_PASSWORD") %>
+    # Consider pointing to a read-only replica
+    # replica: true 
 ```
 
 ## 2. Create Abstract Class
@@ -61,6 +76,10 @@ class AuthBase < ApplicationRecord
   end
 end
 ```
+
+> [!NOTE]
+> Since `readonly?` is set to `true`, attempting to execute `create`, `update`, or `destroy` through this model will raise an `ActiveRecord::ReadOnlyRecord` exception.
+> This prevents accidental modification of the data in the Auth Database.
 
 ## 3. Define Models
 

@@ -9,9 +9,19 @@ export function redirectToLogin() {
 
 export async function logout() {
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    await fetch('/api/auth/logout', { 
+      method: 'POST',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
     window.location.href = '/';
   } catch (error) {
     console.error('Logout failed:', error);
+    // Force redirect even if logout fails
+    window.location.href = '/';
   }
 }

@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     
     // アクセストークンをCookieに保存 (httpOnly)
     // Note: next/headers cookies() is read-only in some contexts, but works in Route Handlers
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set('access_token', data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

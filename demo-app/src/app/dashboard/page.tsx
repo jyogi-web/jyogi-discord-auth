@@ -36,7 +36,7 @@ async function getData(token: string): Promise<{ user: User | null; members: Use
 }
 
 export default async function Dashboard() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('access_token');
 
   if (!token) {
