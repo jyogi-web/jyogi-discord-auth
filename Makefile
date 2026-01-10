@@ -123,8 +123,7 @@ setup:
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Edit .env file with your configuration"
-	@echo "  2. Run 'make migrate-up' to create database schema"
-	@echo "  3. Run 'make run' to start the server"
+	@echo "  2. Run 'make run' to start the server"
 
 # プロフィール同期（1回）
 sync-profiles:

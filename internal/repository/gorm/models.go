@@ -18,7 +18,7 @@ type User struct {
 	AvatarURL     string       `gorm:"type:varchar(512)"`
 	GuildNickname sql.NullString `gorm:"type:varchar(255)"`
 	GuildRoles    string       `gorm:"type:text"` // JSON配列として保存
-	JoinedAt      sql.NullTime `gorm:"type:datetime"`
+	JoinedAt      sql.NullTime `gorm:"index;type:datetime"`
 	CreatedAt     time.Time    `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time    `gorm:"autoUpdateTime"`
 	LastLoginAt   sql.NullTime `gorm:"type:datetime"`

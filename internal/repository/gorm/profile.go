@@ -54,7 +54,7 @@ func (r *profileRepository) GetByUserID(ctx context.Context, userID string) (*do
 	var p Profile
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&p).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("profile not found for user: %s", userID)
+			return nil, fmt.Errorf("%w: user_id=%s", domain.ErrProfileNotFound, userID)
 		}
 		return nil, fmt.Errorf("failed to get profile by user_id: %w", err)
 	}

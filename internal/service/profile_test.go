@@ -45,7 +45,7 @@ func (m *mockProfileRepository) GetByID(ctx context.Context, id string) (*domain
 func (m *mockProfileRepository) GetByUserID(ctx context.Context, userID string) (*domain.Profile, error) {
 	profile, ok := m.profilesByUser[userID]
 	if !ok {
-		return nil, nil
+		return nil, domain.ErrProfileNotFound
 	}
 	return profile, nil
 }
@@ -210,8 +210,12 @@ func TestProfileService_GetProfileByUserID_NotFound(t *testing.T) {
 	ctx := context.Background()
 	profile, err := service.GetProfileByUserID(ctx, "non-existent-user-id")
 
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	if !errors.Is(err, domain.ErrProfileNotFound) {
+		t.Errorf("Expected ErrProfileNotFound, got: %v", err)
 	}
 
 	if profile != nil {

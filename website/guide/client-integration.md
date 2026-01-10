@@ -5,12 +5,40 @@ App Router を使用して、セキュアな認証フローを実装します。
 
 ## 概要
 
+> [!TIP]
+> このリポジトリの `demo-app/` ディレクトリに、このガイドで解説する完全なサンプルコードが含まれています。
+> 実装を確認したい場合は、そちらも参照してください。
+
 このガイドで作成するもの：
 
 1. Next.jsアプリケーション
 2. ログインボタン (認証サーバーへリダイレクト)
 3. コールバックハンドラ (認可コードをトークンに交換)
 4. プロフィール表示ページ (取得したトークンでAPIアクセス)
+
+### 認証フロー
+
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant Client as クライアントアプリ
+    participant Auth as 認証サーバー (じょぎAuth)
+    participant Discord as Discord
+
+    User->>Client: ログインボタンをクリック
+    Client->>Auth: リダイレクト (GET /oauth/authorize)
+    Auth->>User: ログイン画面表示 (未ログイン時)
+    User->>Auth: Discordでログイン
+    Auth->>Discord: OAuth2 連携
+    Discord-->>Auth: ユーザー情報返却
+    Auth->>Auth: じょぎメンバー確認
+    Auth-->>Client: リダイレクト (callback?code=...)
+    Client->>Auth: トークン交換 (POST /oauth/token)
+    Auth-->>Client: アクセストークン返却
+    Client->>Auth: ユーザー情報取得 (GET /api/user)
+    Auth-->>Client: ユーザー情報 & プロフィール返却
+    Client->>User: マイページ表示
+```
 
 ## Step 1: Next.jsプロジェクトの作成
 
@@ -105,7 +133,7 @@ export async function GET(request: Request) {
   const data = await tokenRes.json()
   
   // アクセストークンをCookieに保存 (httpOnly)
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.set('access_token', data.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -129,11 +157,29 @@ export async function GET(request: Request) {
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-async function getUser(token: string) {
+// APIレスポンスの型定義
+type UserProfile = {
+  id: string
+  discord_id: string
+  username: string
+  display_name: string
+  avatar_url: string
+  guild_roles?: string[]
+  profile?: {
+    real_name?: string
+    student_id?: string
+    hobbies?: string
+    what_to_do?: string
+    comment?: string
+  }
+}
+
+async function getUser(token: string): Promise<UserProfile | null> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVER_URL}/api/user`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    cache: 'no-store' // 常に最新を取得
   })
   
   if (!res.ok) return null
@@ -141,7 +187,7 @@ async function getUser(token: string) {
 }
 
 export default async function MePage() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get('access_token')
 
   if (!token) {
@@ -156,23 +202,144 @@ export default async function MePage() {
 
   return (
     <main className="p-24">
-      <h1 className="text-2xl font-bold mb-4">ようこそ、{user.username}さん</h1>
-      <div className="bg-gray-100 p-6 rounded-lg">
-        <p>Discord ID: {user.discord_id}</p>
-        <p>会員ステータス: <span className="text-green-600 font-bold">有効</span></p>
+      <div className="flex items-center gap-4 mb-8">
+        {user.avatar_url && (
+          <img src={user.avatar_url} alt={user.username} className="w-16 h-16 rounded-full" />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold">{user.display_name}</h1>
+          <p className="text-gray-500">@{user.username}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-bold mb-4">アカウント情報</h2>
+          <dl className="space-y-2">
+            <div>
+              <dt className="text-sm text-gray-500">Discord ID</dt>
+              <dd>{user.discord_id}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">会員ステータス</dt>
+              <dd className="text-green-600 font-bold">有効</dd>
+            </div>
+          </dl>
+        </div>
+
+        {user.profile && (
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-bold mb-4">プロフィール (同期済み)</h2>
+            <dl className="space-y-2">
+              <div>
+                <dt className="text-sm text-gray-500">名前</dt>
+                <dd>{user.profile.real_name || '-'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">学籍番号</dt>
+                <dd>{user.profile.student_id || '-'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">やりたいこと</dt>
+                <dd>{user.profile.what_to_do || '-'}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
       </div>
     </main>
   )
 }
 ```
 
-## テスト実行
+## その他の言語での実装例
 
-```bash
-npm run dev
+### Python (Requests)
+
+```python
+import requests
+
+def get_user_profile(access_token):
+    url = "https://your-auth-server.com/api/user"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error: {response.status_code}")
+        return None
+
+# 使用例
+profile = get_user_profile("YOUR_ACCESS_TOKEN")
+print(profile['username'])
 ```
 
-1. `http://localhost:3000` にアクセス
-2. 「Discordでログイン」ボタンをクリック
-3. 認証サーバー (Discord) で承認
-4. ローカルホストに戻り、マイページで自分のユーザー名が表示されれば成功です！
+### Node.js (Axios)
+
+```javascript
+const axios = require('axios');
+
+async function getUserProfile(accessToken) {
+  try {
+    const response = await axios.get('https://your-auth-server.com/api/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching profile:', error.response?.status);
+    return null;
+  }
+}
+```
+
+### Ruby on Rails (Faraday)
+
+```ruby
+# app/controllers/auth_controller.rb
+class AuthController < ApplicationController
+  def callback
+    # 1. 認可コードをアクセストークンに交換
+    response = Faraday.post("#{ENV['AUTH_SERVER_URL']}/oauth/token") do |req|
+      req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      req.body = URI.encode_www_form({
+        grant_type: 'authorization_code',
+        code: params[:code],
+        client_id: ENV['CLIENT_ID'],
+        client_secret: ENV['CLIENT_SECRET'],
+        redirect_uri: ENV['REDIRECT_URI']
+      })
+    end
+
+    unless response.success?
+      return redirect_to root_path, alert: '認証失敗'
+    end
+
+    access_token = JSON.parse(response.body)['access_token']
+
+    # 2. ユーザー情報とプロフィールを取得
+    user_res = Faraday.get("#{ENV['AUTH_SERVER_URL']}/api/user") do |req|
+      req.headers['Authorization'] = "Bearer #{access_token}"
+    end
+
+    user_info = JSON.parse(user_res.body)
+    session[:user] = user_info
+    redirect_to dashboard_path
+  end
+end
+```
+
+## エラーハンドリング
+
+APIを利用する際は、以下のエラーコードに対応することを推奨します。
+
+| ステータスコード | 意味 | 対処法 |
+| :--- | :--- | :--- |
+| `401 Unauthorized` | トークンが無効または期限切れ | ユーザーを再ログインさせるか、リフレッシュトークンを使用してください。 |
+| `403 Forbidden` | アクセス権限がない | ユーザーはじょぎメンバーではない可能性があります。 |
+| `500 Internal Server Error` | サーバーエラー | 管理者に問い合わせてください。 |
