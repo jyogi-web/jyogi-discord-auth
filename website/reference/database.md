@@ -46,6 +46,9 @@
 - `discord_id` (TEXT, UNIQUE, NOT NULL): Discord ユーザーID
 - `username` (TEXT, NOT NULL): Discordユーザー名
 - `avatar_url` (TEXT): アバターURL
+- `guild_roles` (TEXT): ギルド内ロール（JSON文字列配列）
+- `guild_nickname` (TEXT): ギルド内ニックネーム
+- `joined_at` (TIMESTAMP): ギルド参加日時
 - `created_at` (TIMESTAMP, NOT NULL): 作成日時
 - `updated_at` (TIMESTAMP, NOT NULL): 更新日時
 - `last_login_at` (TIMESTAMP): 最終ログイン日時
@@ -58,12 +61,16 @@ CREATE TABLE IF NOT EXISTS users (
     discord_id TEXT UNIQUE NOT NULL,
     username TEXT NOT NULL,
     avatar_url TEXT,
+    guild_roles TEXT,
+    guild_nickname TEXT,
+    joined_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
+CREATE INDEX IF NOT EXISTS idx_users_joined_at ON users(joined_at);
 ```
 
 ### 2. Session（セッション）
