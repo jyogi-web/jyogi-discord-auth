@@ -4,51 +4,158 @@
 
 ### Discordログイン
 
-- **URL**: `/auth/login`
-- **Method**: `GET`
-- **Description**: DiscordのOAuth2認証フローを開始します。
+DiscordのOAuth2認証フローを開始します。
+
+**Endpoint:** `GET /auth/login`
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `redirect_uri` | string | Optional | 認証完了後のリダイレクト先URI |
+
+**Example:**
+
+```bash
+# ブラウザでアクセス
+http://localhost:8080/auth/login?redirect_uri=http://localhost:3000/callback
+```
 
 ### Discordコールバック
 
-- **URL**: `/auth/callback`
-- **Method**: `GET`
-- **Description**: Discordからのリダイレクトを受け取り、セッションを作成します。
+Discordからのリダイレクトを受け取り、セッションを作成します（内部使用）。
+
+**Endpoint:** `GET /auth/callback`
 
 ### ログアウト
 
-- **URL**: `/auth/logout`
-- **Method**: `POST`
-- **Description**: セッションを破棄してログアウトします。
+セッションを破棄してログアウトします。
 
-## トークン (Token)
+**Endpoint:** `POST /auth/logout`
 
-### JWT発行
+**Example:**
 
-- **URL**: `/token`
-- **Method**: `POST`
-- **Header**: `Cookie: session=...`
-- **Description**: 有効なセッションを持つユーザーに対してJWTを発行します。
+```bash
+curl -X POST http://localhost:8080/auth/logout \
+  -H "Cookie: session_token=..."
+```
 
-### トークン更新
+## OAuth2 (SSO)
 
-- **URL**: `/token/refresh`
-- **Method**: `POST`
-- **Description**: リフレッシュトークンを使用して新しいアクセストークンを取得します。
+クライアントアプリケーション向けのOAuth2エンドポイントです。
+
+### 認可エンドポイント
+
+**Endpoint:** `GET /oauth/authorize`
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `client_id` | string | Yes | クライアントID |
+| `redirect_uri` | string | Yes | リダイレクトURI |
+| `response_type` | string | Yes | `code` 固定 |
+| `state` | string | Optional | CSRF対策用文字列 |
+
+**Example:**
+
+```bash
+http://localhost:8080/oauth/authorize?client_id=your_id&redirect_uri=...&response_type=code&state=xyz
+```
+
+### トークンエンドポイント
+
+認可コードをアクセストークンに交換します。
+
+**Endpoint:** `POST /oauth/token`
+
+**Parameters (Form Data):**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `grant_type` | string | Yes | `authorization_code` または `refresh_token` |
+| `code` | string | Yes | 認可コード (grant_type=authorization_code時) |
+| `refresh_token` | string | Yes | リフレッシュトークン (grant_type=refresh_token時) |
+| `client_id` | string | Yes | クライアントID |
+| `client_secret` | string | Yes | クライアントシークレット |
+| `redirect_uri` | string | Yes | リダイレクトURI |
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbG...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "def...",
+  "scope": "identify"
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8080/oauth/token \
+  -d "grant_type=authorization_code" \
+  -d "code=SplxlOBeZQQYbYS6WxSbIA" \
+  -d "redirect_uri=http://localhost:3000/callback" \
+  -d "client_id=CLIENT_ID" \
+  -d "client_secret=CLIENT_SECRET"
+```
 
 ## 保護されたリソース (Protected)
 
-以下のエンドポイントは有効なJWTが必要です。
-
-### JWT検証
-
-- **URL**: `/api/verify`
-- **Method**: `GET`
-- **Header**: `Authorization: Bearer <token>`
-- **Description**: トークンの有効性を検証します。
+以下のエンドポイントは有効なJWTが必要です。ヘッダーに `Authorization: Bearer <token>` を付与してください。
 
 ### ユーザー情報取得
 
-- **URL**: `/api/user`
-- **Method**: `GET`
-- **Header**: `Authorization: Bearer <token>`
-- **Description**: ログイン中のユーザー情報を返します。
+ログイン中のユーザー情報を返します。プロフィール同期機能により、Discordの自己紹介チャンネルの内容も含まれます。
+
+**Endpoint:** `GET /api/user`
+
+**Response:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "discord_id": "123456789012345678",
+  "username": "jyogi_taro",
+  "display_name": "じょぎ太郎",
+  "avatar_url": "https://cdn.discordapp.com/avatars/...",
+  "last_login_at": "2024-01-01T12:00:00Z",
+  "guild_nickname": "太郎 [B4]",
+  "guild_roles": ["111111", "222222"],
+  "joined_at": "2023-04-01T09:00:00Z",
+  "profile": {
+    "real_name": "定規 太郎",
+    "student_id": "20X1234",
+    "hobbies": "プログラミング, ゲーム",
+    "what_to_do": "最強の認証システムを作る",
+    "comment": "よろしくお願いします！"
+  }
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/api/user \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
+### JWT検証
+
+トークンの有効性を検証します。
+
+**Endpoint:** `GET /api/verify`
+
+**Response:**
+
+```json
+{
+  "valid": true,
+  "user_id": "550e8400-...",
+  "discord_id": "1234567890...",
+  "username": "jyogi_taro"
+}
+```
