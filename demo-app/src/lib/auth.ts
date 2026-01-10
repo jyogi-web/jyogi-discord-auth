@@ -1,5 +1,3 @@
-import { api } from './api';
-
 const AUTH_SERVER_URL = process.env.NEXT_PUBLIC_AUTH_SERVER_URL || 'http://localhost:8080';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -11,7 +9,7 @@ export function redirectToLogin() {
 
 export async function logout() {
   try {
-    await api.logout();
+    await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/';
   } catch (error) {
     console.error('Logout failed:', error);

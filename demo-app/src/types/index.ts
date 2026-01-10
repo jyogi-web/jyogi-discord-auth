@@ -10,14 +10,20 @@ export interface User {
   id: string;
   discord_id: string;
   username: string;
+  display_name: string;
   avatar_url: string;
   last_login_at?: string;
+  joined_at?: string;
+  guild_nickname?: string;
+  guild_roles?: string[];
   profile?: Profile;
 }
 
 export interface MembersResponse {
   members: User[];
-  total: number;
+  limit: number;
+  offset: number;
+  count: number;
 }
 
 export interface ErrorResponse {
