@@ -24,4 +24,7 @@ var (
 
 	// ErrAuthCodeAlreadyUsed は認可コードが既に使用済みの場合のエラー
 	ErrAuthCodeAlreadyUsed = errors.New("authorization code already used")
+
+	// ErrProfileNotFound はプロフィールが見つからない場合のエラー
+	ErrProfileNotFound = errors.New("profile not found")
 )

@@ -75,7 +75,7 @@ func main() {
 	// ハンドラーを初期化
 	authHandler := handler.NewAuthHandler(authService, cfg.CORSAllowedOrigins)
 	tokenHandler := handler.NewTokenHandler(authService, cfg.JWTSecret)
-	apiHandler := handler.NewAPIHandler()
+	apiHandler := handler.NewAPIHandler(authService)
 	oauth2Handler := handler.NewOAuth2Handler(oauth2Service, authService)
 
 	// HTTPルーターをセットアップ

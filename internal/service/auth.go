@@ -287,3 +287,28 @@ func (s *AuthService) GetMembersWithProfiles(ctx context.Context, limit, offset 
 
 	return result, nil
 }
+
+// GetUserWithProfile は指定されたユーザーとそのプロフィール情報を取得します
+func (s *AuthService) GetUserWithProfile(ctx context.Context, userID string) (*MemberWithProfile, error) {
+	// ユーザーを取得
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// プロフィールを取得
+	profile, err := s.profileRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, domain.ErrProfileNotFound) {
+			// プロフィールが見つからない以外のエラーは返す
+			// プロフィールがない場合はnilとして続行
+			return nil, fmt.Errorf("failed to get profile: %w", err)
+		}
+		profile = nil
+	}
+
+	return &MemberWithProfile{
+		User:    user,
+		Profile: profile,
+	}, nil
+}

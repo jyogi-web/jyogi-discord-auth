@@ -1,17 +1,23 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/jyogi-web/jyogi-discord-auth/internal/middleware"
+	"github.com/jyogi-web/jyogi-discord-auth/internal/service"
 )
 
 // APIHandler はAPIハンドラーを表します
-type APIHandler struct{}
+type APIHandler struct {
+	authService *service.AuthService
+}
 
 // NewAPIHandler は新しいAPIハンドラーを作成します
-func NewAPIHandler() *APIHandler {
-	return &APIHandler{}
+func NewAPIHandler(authService *service.AuthService) *APIHandler {
+	return &APIHandler{
+		authService: authService,
+	}
 }
 
 // HandleVerify はJWTトークンの検証を行います
@@ -43,10 +49,15 @@ func (h *APIHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ユーザー情報を返す
-	WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"id":         claims.UserID,
-		"discord_id": claims.DiscordID,
-		"username":   claims.Username,
-	})
+	// ユーザー情報とプロフィールを取得
+	memberWithProfile, err := h.authService.GetUserWithProfile(r.Context(), claims.UserID)
+	if err != nil {
+		log.Printf("Failed to get user profile: %v", err)
+		WriteError(w, http.StatusInternalServerError, "internal_error", "Failed to get user info")
+		return
+	}
+
+	// DTOに変換して返す
+	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	WriteJSON(w, http.StatusOK, dto)
 }
