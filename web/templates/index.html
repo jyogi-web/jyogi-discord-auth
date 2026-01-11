@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>じょぎメンバー認証システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+            margin: 40px auto;
+        }
+        .header {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 15px;
+        }
+        .user-info {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid #e0e0e0;
+        }
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #5865F2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .user-details {
+            flex: 1;
+        }
+        .user-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        .user-status {
+            font-size: 13px;
+            color: #666;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .feature-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 20px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .feature-card:hover {
+            border-color: #5865F2;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .feature-icon {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .feature-description {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        .btn-primary {
+            background: #5865F2;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #4752C4;
+        }
+        .btn-secondary {
+            background: white;
+            color: #5865F2;
+            border: 1px solid #5865F2;
+        }
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+        .btn-logout {
+            background: white;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+        .btn-logout:hover {
+            background: #fff5f5;
+        }
+        .guest-message {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding: 16px 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        .guest-message p {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>じょぎメンバー認証システム</h1>
+            <p class="subtitle">OAuth 2.0クライアント管理</p>
+        </div>
+
+        {{if .User}}
+        <!-- ログイン済みユーザー -->
+        <div class="user-info">
+            <div class="user-avatar">
+                {{if .User.AvatarURL}}
+                <img src="{{.User.AvatarURL}}" alt="{{.User.Username}}">
+                {{else}}
+                {{index .User.Username 0}}
+                {{end}}
+            </div>
+            <div class="user-details">
+                <div class="user-name">{{.User.Username}}</div>
+                <div class="user-status">ログイン中 - じょぎメンバー</div>
+            </div>
+        </div>
+
+        <div class="features">
+            <a href="/clients" class="feature-card">
+                <div class="feature-icon">📋</div>
+                <div class="feature-title">クライアント一覧</div>
+                <div class="feature-description">登録済みのOAuth 2.0クライアントを管理</div>
+            </a>
+
+            <a href="/clients/register" class="feature-card">
+                <div class="feature-icon">➕</div>
+                <div class="feature-title">クライアント登録</div>
+                <div class="feature-description">新しいOAuth 2.0クライアントアプリケーションを登録</div>
+            </a>
+
+            <a href="/api/me" class="feature-card">
+                <div class="feature-icon">👤</div>
+                <div class="feature-title">プロフィール</div>
+                <div class="feature-description">ユーザー情報とアカウント設定を確認</div>
+            </a>
+        </div>
+
+        <div class="actions">
+            <a href="/clients" class="btn btn-primary">クライアント管理</a>
+            <button class="btn btn-logout" onclick="logout()">ログアウト</button>
+        </div>
+
+        {{else}}
+        <!-- 未ログインユーザー -->
+        <div class="guest-message">
+            <p>
+                このシステムを利用するには、じょぎDiscordサーバーのメンバーである必要があります。<br>
+                ログインして、OAuth 2.0クライアントアプリケーションを管理しましょう。
+            </p>
+        </div>
+
+        <div class="features">
+            <div class="feature-card" style="cursor: default; pointer-events: none; opacity: 0.6;">
+                <div class="feature-icon">➕</div>
+                <div class="feature-title">クライアント登録</div>
+                <div class="feature-description">新しいOAuth 2.0クライアントアプリケーションを登録</div>
+            </div>
+
+            <div class="feature-card" style="cursor: default; pointer-events: none; opacity: 0.6;">
+                <div class="feature-icon">🔑</div>
+                <div class="feature-title">認証情報管理</div>
+                <div class="feature-description">Client IDとSecretを安全に管理</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/auth/login?redirect_uri=/" class="btn btn-primary">Discordでログイン</a>
+        </div>
+        {{end}}
+
+        <script>
+            function logout() {
+                if (confirm('ログアウトしますか?')) {
+                    fetch('/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = '/';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('ログアウトエラー:', error);
+                        alert('ログアウトに失敗しました');
+                    });
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

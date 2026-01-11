@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クライアント一覧 - じょぎメンバー認証システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            font-weight: 600;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #5865F2;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #4752C4;
+        }
+        .btn-secondary {
+            background: white;
+            color: #5865F2;
+            border: 1px solid #5865F2;
+        }
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .empty-state {
+            background: white;
+            border-radius: 8px;
+            padding: 60px 30px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .empty-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .empty-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .client-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+        .client-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            gap: 16px;
+        }
+        .client-info {
+            flex: 1;
+        }
+        .client-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .client-id {
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 13px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .client-meta {
+            font-size: 13px;
+            color: #999;
+        }
+        .client-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .client-details {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 16px;
+        }
+        .detail-section {
+            margin-bottom: 12px;
+        }
+        .detail-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .redirect-uri {
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+        .breadcrumb {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb span {
+            color: #999;
+            margin: 0 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/">ホーム</a>
+            <span>/</span>
+            <strong>クライアント一覧</strong>
+        </div>
+
+        <div class="header">
+            <div class="header-content">
+                <h1>登録済みクライアント</h1>
+                <a href="/clients/register" class="btn btn-primary">+ 新規登録</a>
+            </div>
+        </div>
+
+        {{if .Clients}}
+            {{range .Clients}}
+            <div class="client-card">
+                <div class="client-header">
+                    <div class="client-info">
+                        <div class="client-name">{{.Name}}</div>
+                        <div class="client-id">Client ID: {{.ClientID}}</div>
+                        <div class="client-meta">
+                            登録日: {{.CreatedAt.Format "2006-01-02 15:04"}} |
+                            更新日: {{.UpdatedAt.Format "2006-01-02 15:04"}}
+                        </div>
+                    </div>
+                    <div class="client-actions">
+                        <a href="/clients/{{.ID}}/edit" class="btn btn-secondary btn-small">編集</a>
+                        <button class="btn btn-danger btn-small" onclick="deleteClient('{{.ID}}', '{{.Name}}')">削除</button>
+                    </div>
+                </div>
+                <div class="client-details">
+                    <div class="detail-section">
+                        <div class="detail-label">リダイレクトURI ({{len .RedirectURIs}}件)</div>
+                        {{range .RedirectURIs}}
+                        <div class="redirect-uri">{{.}}</div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        {{else}}
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-title">登録されているクライアントがありません</div>
+                <div class="empty-description">
+                    新しいOAuth 2.0クライアントアプリケーションを登録して、<br>
+                    認証システムを利用しましょう。
+                </div>
+                <a href="/clients/register" class="btn btn-primary">最初のクライアントを登録</a>
+            </div>
+        {{end}}
+    </div>
+
+    <script>
+        function deleteClient(clientId, clientName) {
+            if (!confirm(`「${clientName}」を削除しますか?\n\nこの操作は取り消せません。`)) {
+                return;
+            }
+
+            fetch(`/clients/${clientId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('クライアントを削除しました');
+                    window.location.reload();
+                } else {
+                    alert('削除に失敗しました: ' + (data.message || '不明なエラー'));
+                }
+            })
+            .catch(error => {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
+            });
+        }
+    </script>
+</body>
+</html>
