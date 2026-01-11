@@ -17,6 +17,20 @@ type DiscordConfig struct {
 	BotToken     string `json:"bot_token,omitempty"`
 }
 
+// Validate は必須のシークレットフィールドを検証します
+func (c *DiscordConfig) Validate() error {
+	if c.ClientSecret == "" {
+		return fmt.Errorf("client_secret is required")
+	}
+	if c.JWTSecret == "" {
+		return fmt.Errorf("jwt_secret is required")
+	}
+	if c.BotToken == "" {
+		return fmt.Errorf("bot_token is required")
+	}
+	return nil
+}
+
 // TiDBConfig はTiDB接続設定を保持します
 type TiDBConfig struct {
 	Host     string `json:"host"`
@@ -24,6 +38,26 @@ type TiDBConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Database string `json:"database"`
+}
+
+// Validate は必須のTiDB接続設定フィールドを検証します
+func (c *TiDBConfig) Validate() error {
+	if c.Host == "" {
+		return fmt.Errorf("host is required")
+	}
+	if c.Username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if c.Database == "" {
+		return fmt.Errorf("database is required")
+	}
+	if c.Password == "" {
+		return fmt.Errorf("password is required")
+	}
+	if c.Port < 1 || c.Port > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535, got %d", c.Port)
+	}
+	return nil
 }
 
 // ParseDiscordConfig は環境変数からDiscord設定をパースします
@@ -68,6 +102,9 @@ func ParseDiscordConfig() (*DiscordConfig, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse DISCORD_CONFIG: %w", err)
 	}
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid Discord config: %w", err)
+	}
 	return &config, nil
 }
 
@@ -76,37 +113,25 @@ func ParseTiDBConfig() (*TiDBConfig, error) {
 	jsonStr := os.Getenv("TIDB_CONFIG")
 	if jsonStr == "" {
 		// フォールバック: 個別の環境変数から読み込み（後方互換性）
-		host := os.Getenv("TIDB_DB_HOST")
-		username := os.Getenv("TIDB_DB_USERNAME")
-		password := os.Getenv("TIDB_DB_PASSWORD")
-		database := os.Getenv("TIDB_DB_DATABASE")
-
-		// 必須フィールドのバリデーション
-		if host == "" {
-			return nil, fmt.Errorf("TIDB_DB_HOST is required")
-		}
-		if username == "" {
-			return nil, fmt.Errorf("TIDB_DB_USERNAME is required")
-		}
-		if password == "" {
-			return nil, fmt.Errorf("TIDB_DB_PASSWORD is required")
-		}
-		if database == "" {
-			return nil, fmt.Errorf("TIDB_DB_DATABASE is required")
-		}
-
-		return &TiDBConfig{
-			Host:     host,
+		config := &TiDBConfig{
+			Host:     os.Getenv("TIDB_DB_HOST"),
 			Port:     getEnvInt("TIDB_DB_PORT", 4000),
-			Username: username,
-			Password: password,
-			Database: database,
-		}, nil
+			Username: os.Getenv("TIDB_DB_USERNAME"),
+			Password: os.Getenv("TIDB_DB_PASSWORD"),
+			Database: os.Getenv("TIDB_DB_DATABASE"),
+		}
+		if err := config.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid TiDB config: %w", err)
+		}
+		return config, nil
 	}
 
 	var config TiDBConfig
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse TIDB_CONFIG: %w", err)
+	}
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid TiDB config: %w", err)
 	}
 	return &config, nil
 }
