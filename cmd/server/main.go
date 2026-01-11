@@ -81,6 +81,9 @@ func main() {
 	oauth2Handler := handler.NewOAuth2Handler(oauth2Service, authService)
 	clientHandler := handler.NewClientHandler(clientService, authService)
 
+	// セッション認証ミドルウェア
+	sessionAuthMiddleware := middleware.SessionAuth(authService)
+
 	// HTTPルーターをセットアップ
 	mux := http.NewServeMux()
 
@@ -101,8 +104,8 @@ func main() {
 	mux.HandleFunc("/api/members", authHandler.HandleMembers)
 
 	// クライアント管理エンドポイント
-	mux.HandleFunc("/clients", clientHandler.HandleListClients) // クライアント一覧
-	mux.HandleFunc("/clients/register", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/clients", sessionAuthMiddleware(http.HandlerFunc(clientHandler.HandleListClients))) // クライアント一覧
+	mux.Handle("/clients/register", sessionAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			clientHandler.HandleRegisterForm(w, r)
 		} else if r.Method == http.MethodPost {
@@ -110,9 +113,9 @@ func main() {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
+	})))
 	// クライアント編集・削除 (動的ルート)
-	mux.HandleFunc("/clients/", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/clients/", sessionAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// /clients/:id/edit または /clients/:id (DELETE)
 		if strings.HasSuffix(r.URL.Path, "/edit") {
 			clientHandler.HandleEditClientForm(w, r)
@@ -123,7 +126,7 @@ func main() {
 		} else {
 			http.Error(w, "Not found", http.StatusNotFound)
 		}
-	})
+	})))
 
 	// トークンエンドポイント
 	mux.HandleFunc("/token", tokenHandler.HandleIssueToken)
