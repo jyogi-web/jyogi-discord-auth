@@ -98,6 +98,23 @@ func (h *ClientHandler) HandleRegisterForm(w http.ResponseWriter, r *http.Reques
 		"RedirectURIs": "",
 	}
 
+	// CSRFトークンを生成
+	csrfToken, err := h.authService.GenerateState()
+	if err == nil {
+		// Cookieに保存 (HttpOnly=true, SameSite=Lax)
+		SetSecureCookie(w, r, CookieOptions{
+			Name:     "csrf_token",
+			Value:    csrfToken,
+			Path:     "/",
+			MaxAge:   1800, // 30分
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		data["CSRFToken"] = csrfToken
+	} else {
+		log.Printf("Failed to generate CSRF token: %v", err)
+	}
+
 	// テンプレートをレンダリング
 	if err := h.templates.ExecuteTemplate(w, "register_client.html", data); err != nil {
 		log.Printf("Failed to render template: %v", err)
@@ -123,7 +140,7 @@ func (h *ClientHandler) HandleRegisterSubmit(w http.ResponseWriter, r *http.Requ
 	}
 
 	// セッションを検証
-	_, err = h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
+	user, err := h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
 	if err != nil {
 		// セッション無効の場合もログイン画面にリダイレクト
 		http.Redirect(w, r, "/auth/login?redirect_uri=/clients/register", http.StatusFound)
@@ -133,6 +150,15 @@ func (h *ClientHandler) HandleRegisterSubmit(w http.ResponseWriter, r *http.Requ
 	// フォームパラメータを解析
 	if err := r.ParseForm(); err != nil {
 		h.renderFormWithError(w, "フォームの解析に失敗しました", "", "")
+		return
+	}
+
+	// CSRFトークンの検証
+	csrfToken := r.FormValue("csrf_token")
+	csrfCookie, err := r.Cookie("csrf_token")
+	if err != nil || csrfCookie.Value == "" || csrfToken == "" || csrfToken != csrfCookie.Value {
+		log.Printf("CSRF token validation failed")
+		http.Error(w, "Forbidden: Invalid CSRF token", http.StatusForbidden)
 		return
 	}
 
@@ -195,7 +221,7 @@ func (h *ClientHandler) HandleRegisterSubmit(w http.ResponseWriter, r *http.Requ
 	}
 
 	// ClientServiceでクライアントを登録
-	client, err := h.clientService.RegisterClient(r.Context(), clientID, clientSecret, name, redirectURIs)
+	client, err := h.clientService.RegisterClient(r.Context(), user.ID, clientID, clientSecret, name, redirectURIs)
 	if err != nil {
 		log.Printf("Failed to register client: %v", err)
 		// エラーメッセージをユーザーに表示
@@ -444,7 +470,7 @@ func (h *ClientHandler) HandleDeleteClient(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	_, err = h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
+	user, err := h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
 	if err != nil {
 		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
 			"success": false,
@@ -463,6 +489,25 @@ func (h *ClientHandler) HandleDeleteClient(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	clientID := pathParts[1]
+
+	// 削除対象のクライアントを取得して所有権を確認
+	client, err := h.clientService.GetClientByID(r.Context(), clientID)
+	if err != nil {
+		WriteJSON(w, http.StatusNotFound, map[string]interface{}{
+			"success": false,
+			"message": "Client not found",
+		})
+		return
+	}
+
+	// 所有者チェック (OwnerIDが空の場合はチェックしない等の運用も考えられるが、基本は一致必須)
+	if client.OwnerID != "" && client.OwnerID != user.ID {
+		WriteJSON(w, http.StatusForbidden, map[string]interface{}{
+			"success": false,
+			"message": "You are not authorized to delete this client",
+		})
+		return
+	}
 
 	// ClientServiceで削除
 	err = h.clientService.DeleteClient(r.Context(), clientID)

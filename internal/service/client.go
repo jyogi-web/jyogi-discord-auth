@@ -25,7 +25,10 @@ func NewClientService(clientRepo repository.ClientRepository) *ClientService {
 
 // RegisterClient は新しいクライアントアプリケーションを登録します
 // clientSecret は平文で受け取り、内部でハッシュ化して保存します
-func (s *ClientService) RegisterClient(ctx context.Context, clientID, plainSecret, name string, redirectURIs []string) (*domain.ClientApp, error) {
+func (s *ClientService) RegisterClient(ctx context.Context, ownerID, clientID, plainSecret, name string, redirectURIs []string) (*domain.ClientApp, error) {
+	if ownerID == "" {
+		return nil, fmt.Errorf("owner_id is required")
+	}
 	if clientID == "" {
 		return nil, fmt.Errorf("client_id is required")
 	}
@@ -54,6 +57,7 @@ func (s *ClientService) RegisterClient(ctx context.Context, clientID, plainSecre
 	now := time.Now()
 	client := &domain.ClientApp{
 		ID:           uuid.New().String(),
+		OwnerID:      ownerID,
 		ClientID:     clientID,
 		ClientSecret: hashedSecret,
 		Name:         name,

@@ -9,6 +9,7 @@ import (
 // ClientApp はこの認証サーバーを使用するアプリケーション（SSO用）を表します
 type ClientApp struct {
 	ID           string
+	OwnerID      string // クライアントアプリの作成者ID
 	ClientID     string
 	ClientSecret string // bcryptでハッシュ化
 	Name         string

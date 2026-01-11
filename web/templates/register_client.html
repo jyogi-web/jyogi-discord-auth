@@ -108,6 +108,7 @@
         {{end}}
 
         <form method="POST" action="/clients/register">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <div class="form-group">
                 <label for="name">クライアント名 *</label>
                 <input
