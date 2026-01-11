@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // DiscordConfig はDiscord関連の設定を保持します
@@ -115,7 +116,9 @@ func getEnvInt(key string, defaultVal int) int {
 	if val == "" {
 		return defaultVal
 	}
-	var result int
-	fmt.Sscanf(val, "%d", &result)
+	result, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
 	return result
 }
