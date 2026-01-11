@@ -49,21 +49,34 @@ func (h *OAuth2Handler) HandleAuthorize(w http.ResponseWriter, r *http.Request) 
 	sessionCookie, err := r.Cookie("session_token")
 	if err != nil {
 		// ユーザーが未ログインの場合、Discordログインにリダイレクト
-		// ログイン後にこのauthorizeリクエストに戻るようにstate情報を保存する必要がある
-		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
-			"error":             "login_required",
-			"error_description": "user must be logged in",
+		// ログイン後にこのauthorizeリクエストに戻るように、現在のURLをredirect_uriとして保存
+		SetSecureCookie(w, r, CookieOptions{
+			Name:     "redirect_uri",
+			Value:    r.URL.String(),
+			Path:     "/",
+			MaxAge:   600, // 10分間有効
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
 
 	// セッションからユーザーを取得
 	user, err := h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
 	if err != nil {
-		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
-			"error":             "invalid_session",
-			"error_description": "session is invalid or expired",
+		// セッションが無効な場合もログインにリダイレクト
+		SetSecureCookie(w, r, CookieOptions{
+			Name:     "redirect_uri",
+			Value:    r.URL.String(),
+			Path:     "/",
+			MaxAge:   600, // 10分間有効
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
 

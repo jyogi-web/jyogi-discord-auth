@@ -35,11 +35,34 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// redirect_uriの検証
 	isValidOrigin := false
 	if redirectURI != "" {
-		for _, origin := range h.allowedOrigins {
-			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
-			if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
+		// 内部パス（/で始まる）は許可
+		if strings.HasPrefix(redirectURI, "/") {
+			isValidOrigin = true
+		} else {
+			for _, origin := range h.allowedOrigins {
+				// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+				if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
+					isValidOrigin = true
+					break
+				}
+			}
+		}
+	}
+
+	// Cookieから既存のredirect_uriを確認（OAuth2フロー中の場合は既に設定されている可能性がある）
+	if redirectURI == "" {
+		if cookie, err := r.Cookie("redirect_uri"); err == nil && cookie.Value != "" {
+			redirectURI = cookie.Value
+			// 内部パスか許可オリジンか再検証
+			if strings.HasPrefix(redirectURI, "/") {
 				isValidOrigin = true
-				break
+			} else {
+				for _, origin := range h.allowedOrigins {
+					if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
+						isValidOrigin = true
+						break
+					}
+				}
 			}
 		}
 	}
@@ -154,11 +177,16 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// redirect_uriの再検証（念のため）
 	isValidOrigin := false
 	if redirectURL != "" {
-		for _, origin := range h.allowedOrigins {
-			// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
-			if redirectURL == origin || strings.HasPrefix(redirectURL, origin+"/") {
-				isValidOrigin = true
-				break
+		// 内部パス（/で始まる）は許可
+		if strings.HasPrefix(redirectURL, "/") {
+			isValidOrigin = true
+		} else {
+			for _, origin := range h.allowedOrigins {
+				// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+				if redirectURL == origin || strings.HasPrefix(redirectURL, origin+"/") {
+					isValidOrigin = true
+					break
+				}
 			}
 		}
 	}
