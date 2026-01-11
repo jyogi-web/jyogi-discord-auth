@@ -162,10 +162,80 @@ func (m *mockAuthCodeRepository) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
+// モックUserRepository
+type mockOAuth2UserRepository struct {
+	users             map[string]*domain.User
+	usersByDiscordID  map[string]*domain.User
+	createError       error
+	getByDiscordIDErr error
+	getByIDErr        error
+}
+
+func newMockOAuth2UserRepository() *mockOAuth2UserRepository {
+	return &mockOAuth2UserRepository{
+		users:            make(map[string]*domain.User),
+		usersByDiscordID: make(map[string]*domain.User),
+	}
+}
+
+func (m *mockOAuth2UserRepository) Create(ctx context.Context, user *domain.User) error {
+	if m.createError != nil {
+		return m.createError
+	}
+	m.users[user.ID] = user
+	m.usersByDiscordID[user.DiscordID] = user
+	return nil
+}
+
+func (m *mockOAuth2UserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
+	if m.getByIDErr != nil {
+		return nil, m.getByIDErr
+	}
+	user, ok := m.users[id]
+	if !ok {
+		return nil, errors.New("user not found")
+	}
+	return user, nil
+}
+
+func (m *mockOAuth2UserRepository) GetByDiscordID(ctx context.Context, discordID string) (*domain.User, error) {
+	if m.getByDiscordIDErr != nil {
+		return nil, m.getByDiscordIDErr
+	}
+	user, ok := m.usersByDiscordID[discordID]
+	if !ok {
+		return nil, domain.ErrUserNotFound
+	}
+	return user, nil
+}
+
+func (m *mockOAuth2UserRepository) Update(ctx context.Context, user *domain.User) error {
+	m.users[user.ID] = user
+	m.usersByDiscordID[user.DiscordID] = user
+	return nil
+}
+
+func (m *mockOAuth2UserRepository) Delete(ctx context.Context, id string) error {
+	user, ok := m.users[id]
+	if ok {
+		delete(m.usersByDiscordID, user.DiscordID)
+		delete(m.users, id)
+	}
+	return nil
+}
+
+func (m *mockOAuth2UserRepository) GetAll(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	var users []*domain.User
+	for _, u := range m.users {
+		users = append(users, u)
+	}
+	return users, nil
+}
+
 // TestOAuth2Service_GetUserByAccessToken_Success tests that a valid access token returns the expected user
 func TestOAuth2Service_GetUserByAccessToken_Success(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
@@ -222,7 +292,7 @@ func TestOAuth2Service_GetUserByAccessToken_Success(t *testing.T) {
 // TestOAuth2Service_GetUserByAccessToken_TokenNotFound tests that token not found returns an error
 func TestOAuth2Service_GetUserByAccessToken_TokenNotFound(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
@@ -239,7 +309,7 @@ func TestOAuth2Service_GetUserByAccessToken_TokenNotFound(t *testing.T) {
 // TestOAuth2Service_GetUserByAccessToken_WrongTokenType tests that a refresh token returns an error
 func TestOAuth2Service_GetUserByAccessToken_WrongTokenType(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
@@ -278,7 +348,7 @@ func TestOAuth2Service_GetUserByAccessToken_WrongTokenType(t *testing.T) {
 // TestOAuth2Service_GetUserByAccessToken_ExpiredToken tests that an expired token returns an error
 func TestOAuth2Service_GetUserByAccessToken_ExpiredToken(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
@@ -317,7 +387,7 @@ func TestOAuth2Service_GetUserByAccessToken_ExpiredToken(t *testing.T) {
 // TestOAuth2Service_GetUserByAccessToken_RevokedToken tests that a revoked token returns an error
 func TestOAuth2Service_GetUserByAccessToken_RevokedToken(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
@@ -356,7 +426,7 @@ func TestOAuth2Service_GetUserByAccessToken_RevokedToken(t *testing.T) {
 // TestOAuth2Service_GetUserByAccessToken_UserNotFound tests that userRepo.GetByID error is propagated
 func TestOAuth2Service_GetUserByAccessToken_UserNotFound(t *testing.T) {
 	tokenRepo := newMockTokenRepository()
-	userRepo := newMockUserRepository()
+	userRepo := newMockOAuth2UserRepository()
 	clientRepo := newMockClientRepository()
 	authCodeRepo := newMockAuthCodeRepository()
 
