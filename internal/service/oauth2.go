@@ -236,6 +236,33 @@ func (s *OAuth2Service) ExchangeToken(ctx context.Context, req *TokenRequest) (*
 	}, nil
 }
 
+// GetUserByAccessToken はアクセストークンからユーザー情報を取得します
+func (s *OAuth2Service) GetUserByAccessToken(ctx context.Context, accessToken string) (*domain.User, error) {
+	// 1. トークンを取得
+	token, err := s.tokenRepo.GetByToken(ctx, accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("invalid access token: %w", err)
+	}
+
+	// 2. トークンの種類を確認（アクセストークンか？）
+	if token.TokenType != domain.TokenTypeAccess {
+		return nil, fmt.Errorf("token is not an access token")
+	}
+
+	// 3. トークンの有効性を確認（期限切れ & 取り消し済みチェック）
+	if !token.IsValid() {
+		return nil, fmt.Errorf("token is expired or revoked")
+	}
+
+	// 4. ユーザー情報を取得
+	user, err := s.userRepo.GetByID(ctx, token.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return user, nil
+}
+
 // generateSecureToken は暗号学的に安全なランダムトークンを生成します
 func generateSecureToken() (string, error) {
 	b := make([]byte, 32)
