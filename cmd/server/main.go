@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -66,6 +67,7 @@ func main() {
 		tokenRepo,
 		userRepo,
 	)
+	clientService := service.NewClientService(clientRepo)
 	sessionCleanupService := service.NewSessionCleanupService(
 		sessionRepo,
 		1*time.Hour, // 1時間ごとにクリーンアップ
@@ -77,6 +79,10 @@ func main() {
 	tokenHandler := handler.NewTokenHandler(authService, cfg.JWTSecret)
 	apiHandler := handler.NewAPIHandler(authService)
 	oauth2Handler := handler.NewOAuth2Handler(oauth2Service, authService)
+	clientHandler := handler.NewClientHandler(clientService, authService)
+
+	// セッション認証ミドルウェア
+	sessionAuthMiddleware := middleware.SessionAuth(authService)
 
 	// HTTPルーターをセットアップ
 	mux := http.NewServeMux()
@@ -87,12 +93,40 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
+	// ホーム画面
+	mux.HandleFunc("/", clientHandler.HandleIndex)
+
 	// 認証エンドポイント
 	mux.HandleFunc("/auth/login", authHandler.HandleLogin)
 	mux.HandleFunc("/auth/callback", authHandler.HandleCallback)
 	mux.HandleFunc("/auth/logout", authHandler.HandleLogout)
 	mux.HandleFunc("/api/me", authHandler.HandleMe)
 	mux.HandleFunc("/api/members", authHandler.HandleMembers)
+
+	// クライアント管理エンドポイント
+	mux.Handle("/clients", sessionAuthMiddleware(http.HandlerFunc(clientHandler.HandleListClients))) // クライアント一覧
+	mux.Handle("/clients/register", sessionAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			clientHandler.HandleRegisterForm(w, r)
+		} else if r.Method == http.MethodPost {
+			clientHandler.HandleRegisterSubmit(w, r)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+	// クライアント編集・削除 (動的ルート)
+	mux.Handle("/clients/", sessionAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// /clients/:id/edit または /clients/:id (DELETE)
+		if strings.HasSuffix(r.URL.Path, "/edit") {
+			clientHandler.HandleEditClientForm(w, r)
+		} else if r.Method == http.MethodPost {
+			clientHandler.HandleUpdateClient(w, r)
+		} else if r.Method == http.MethodDelete {
+			clientHandler.HandleDeleteClient(w, r)
+		} else {
+			http.Error(w, "Not found", http.StatusNotFound)
+		}
+	})))
 
 	// トークンエンドポイント
 	mux.HandleFunc("/token", tokenHandler.HandleIssueToken)
