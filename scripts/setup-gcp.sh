@@ -100,7 +100,10 @@ create_or_update_secret() {
         echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file=- --project "$PROJECT_ID" --quiet
         
         # 古いバージョンを無効化（最新版のみアクティブに）
-        VERSIONS=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED" | tail -n +2)
+    # 最新バージョンを明示的に取得（降順でソート）
+   LATEST_VERSION=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED" --limit=1 --sort-by="~name")
+    # 最新版以外の有効なバージョンを取得
+    VERSIONS=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED AND name!=$LATEST_VERSION")
         for VERSION in $VERSIONS; do
             gcloud secrets versions disable "$VERSION" --secret="$SECRET_NAME" --project "$PROJECT_ID" --quiet
         done
@@ -111,29 +114,23 @@ create_or_update_secret() {
 }
 
 # Discord設定をJSON化
-DISCORD_CONFIG_JSON=$(cat <<EOF
-{
-  "client_id": "$DISCORD_CLIENT_ID",
-  "client_secret": "$DISCORD_CLIENT_SECRET",
-  "redirect_uri": "$DISCORD_REDIRECT_URI",
-  "guild_id": "$DISCORD_GUILD_ID",
-  "jwt_secret": "$JWT_SECRET",
-  "bot_token": "${DISCORD_BOT_TOKEN:-}"
-}
-EOF
-)
+DISCORD_CONFIG_JSON=$(jq -n \
+  --arg client_id "$DISCORD_CLIENT_ID" \
+  --arg client_secret "$DISCORD_CLIENT_SECRET" \
+  --arg redirect_uri "$DISCORD_REDIRECT_URI" \
+  --arg guild_id "$DISCORD_GUILD_ID" \
+  --arg jwt_secret "$JWT_SECRET" \
+  --arg bot_token "${DISCORD_BOT_TOKEN:-}" \
+  '{client_id: $client_id, client_secret: $client_secret, redirect_uri: $redirect_uri, guild_id: $guild_id, jwt_secret: $jwt_secret, bot_token: $bot_token}')
 
 # TiDB設定をJSON化
-TIDB_CONFIG_JSON=$(cat <<EOF
-{
-  "host": "$TIDB_DB_HOST",
-  "port": ${TIDB_DB_PORT:-4000},
-  "username": "$TIDB_DB_USERNAME",
-  "password": "$TIDB_DB_PASSWORD",
-  "database": "$TIDB_DB_DATABASE"
-}
-EOF
-)
+TIDB_CONFIG_JSON=$(jq -n \
+  --arg host "$TIDB_DB_HOST" \
+  --arg port "${TIDB_DB_PORT:-4000}" \
+  --arg username "$TIDB_DB_USERNAME" \
+  --arg password "$TIDB_DB_PASSWORD" \
+  --arg database "$TIDB_DB_DATABASE" \
+  '{host: $host, port: ($port|tonumber), username: $username, password: $password, database: $database}')
 
 # 統合シークレットの作成
 # NOTE

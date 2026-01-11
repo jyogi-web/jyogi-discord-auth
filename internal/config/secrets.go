@@ -102,9 +102,24 @@ func ParseDiscordConfig() (*DiscordConfig, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse DISCORD_CONFIG: %w", err)
 	}
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid Discord config: %w", err)
+	
+	// Validation matching fallback logic
+	if config.ClientID == "" {
+		return nil, fmt.Errorf("client_id is required in DISCORD_CONFIG")
 	}
+	if config.ClientSecret == "" {
+		return nil, fmt.Errorf("client_secret is required in DISCORD_CONFIG")
+	}
+	if config.RedirectURI == "" {
+		return nil, fmt.Errorf("redirect_uri is required in DISCORD_CONFIG")
+	}
+	if config.GuildID == "" {
+		return nil, fmt.Errorf("guild_id is required in DISCORD_CONFIG")
+	}
+	if config.JWTSecret == "" {
+		return nil, fmt.Errorf("jwt_secret is required in DISCORD_CONFIG")
+	}
+
 	return &config, nil
 }
 
@@ -130,6 +145,13 @@ func ParseTiDBConfig() (*TiDBConfig, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse TIDB_CONFIG: %w", err)
 	}
+	
+	// Normalize Port to default if not set
+	if config.Port == 0 {
+		config.Port = getEnvInt("TIDB_DB_PORT", 4000)
+	}
+
+	// Validate using the same rules as fallback
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid TiDB config: %w", err)
 	}
