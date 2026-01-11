@@ -38,11 +38,19 @@ func SessionAuth(authService *service.AuthService) func(http.Handler) http.Handl
 				}
 
 				// Otherwise redirect to login
-				// We preserve the redirect_uri
+				// We preserve the redirect_uri but ensure it is safe (relative path only)
 				redirectURI := r.URL.Path
 				if r.URL.RawQuery != "" {
 					redirectURI += "?" + r.URL.RawQuery
 				}
+
+				// Validate redirectURI to prevent open redirects
+				// It must start with / and parsing it should not result in an absolute URL (Scheme/Host must be empty)
+				parsedURL, err := url.Parse(redirectURI)
+				if err != nil || parsedURL.Scheme != "" || parsedURL.Host != "" || !strings.HasPrefix(redirectURI, "/") {
+					redirectURI = "/"
+				}
+
 				http.Redirect(w, r, "/auth/login?redirect_uri="+url.QueryEscape(redirectURI), http.StatusFound)
 				return
 			}
