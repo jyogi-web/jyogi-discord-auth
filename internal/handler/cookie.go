@@ -15,13 +15,16 @@ type CookieOptions struct {
 // SetSecureCookie はセキュアなCookieを設定します
 // HTTPS接続の場合はSecureフラグを設定します
 func SetSecureCookie(w http.ResponseWriter, r *http.Request, opts CookieOptions) {
+	// Cloud RunやリバースプロキシではX-Forwarded-Protoヘッダーをチェック
+	isHTTPS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+
 	cookie := &http.Cookie{
 		Name:     opts.Name,
 		Value:    opts.Value,
 		Path:     opts.Path,
 		MaxAge:   opts.MaxAge,
 		HttpOnly: opts.HttpOnly,
-		Secure:   r.TLS != nil, // HTTPS接続の場合のみSecureフラグを設定
+		Secure:   isHTTPS, // HTTPS接続の場合はSecureフラグを設定
 		SameSite: opts.SameSite,
 	}
 

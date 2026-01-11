@@ -97,15 +97,16 @@ create_or_update_secret() {
 
     if gcloud secrets describe "$SECRET_NAME" --project "$PROJECT_ID" &>/dev/null; then
         echo -e "${YELLOW}既存のシークレット $SECRET_NAME を更新中...${NC}"
-        echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file=- --project "$PROJECT_ID" --quiet
-        
+        # 新しいバージョンを追加
+        NEW_VERSION=$(echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file=- --project "$PROJECT_ID" --format="value(name)")
+
         # 古いバージョンを無効化（最新版のみアクティブに）
-    # 最新バージョンを明示的に取得（降順でソート）
-   LATEST_VERSION=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED" --limit=1 --sort-by="~name")
-    # 最新版以外の有効なバージョンを取得
-    VERSIONS=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED AND name!=$LATEST_VERSION")
+        # 新しく作成したバージョン以外の有効なバージョンを取得して無効化
+        VERSIONS=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED")
         for VERSION in $VERSIONS; do
-            gcloud secrets versions disable "$VERSION" --secret="$SECRET_NAME" --project "$PROJECT_ID" --quiet
+            if [ "$VERSION" != "$NEW_VERSION" ]; then
+                gcloud secrets versions disable "$VERSION" --secret="$SECRET_NAME" --project "$PROJECT_ID" --quiet
+            fi
         done
     else
         echo -e "${YELLOW}新規シークレット $SECRET_NAME を作成中...${NC}"

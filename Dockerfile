@@ -35,8 +35,9 @@ RUN apk --no-cache add ca-certificates tzdata wget bash
 # 作業ディレクトリを設定
 WORKDIR /app
 
-# ビルドステージからバイナリをコピー
+# ビルドステージからバイナリとテンプレートをコピー
 COPY --from=builder /app/server .
+COPY --from=builder /app/web ./web
 # migrationsディレクトリはAutoMigrateを使うので不要だが、参照用にあると便利かもしれない。
 # しかし、main.goで埋め込まれていない限りバイナリからは読めない。GORM AutoMigrateはコード定義から生成するのでSQLファイルは不要。
 # 念のためscriptsだけコピー
