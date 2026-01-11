@@ -75,13 +75,6 @@ CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://local
 # gcloudの引数パースエラーを回避するため、カンマをセミコロンに変換して渡す
 SAFE_CORS_ORIGINS=$(echo "$CORS_ALLOWED_ORIGINS" | tr ',' ';')
 
-# Bot Tokenシークレットフラグの構築
-if gcloud secrets describe "jyogi-discord-bot-token" --project "$PROJECT_ID" &>/dev/null; then
-    BOT_TOKEN_SECRET_FLAG="--set-secrets=DISCORD_BOT_TOKEN=jyogi-discord-bot-token:latest"
-else
-    BOT_TOKEN_SECRET_FLAG=""
-fi
-
 gcloud run deploy "$SERVICE_NAME" \
   --image "$IMAGE_NAME" \
   --region "$REGION" \
@@ -92,17 +85,8 @@ gcloud run deploy "$SERVICE_NAME" \
   --memory 256Mi \
   --cpu 1 \
   --port 8080 \
-  --set-secrets "DISCORD_CLIENT_ID=jyogi-discord-client-id:latest" \
-  --set-secrets "DISCORD_CLIENT_SECRET=jyogi-discord-client-secret:latest" \
-  --set-secrets "DISCORD_REDIRECT_URI=jyogi-discord-redirect-uri:latest" \
-  --set-secrets "DISCORD_GUILD_ID=jyogi-discord-guild-id:latest" \
-  --set-secrets "JWT_SECRET=jyogi-jwt-secret:latest" \
-  --set-secrets "TIDB_DB_HOST=jyogi-tidb-host:latest" \
-  --set-secrets "TIDB_DB_PORT=jyogi-tidb-port:latest" \
-  --set-secrets "TIDB_DB_USERNAME=jyogi-tidb-username:latest" \
-  --set-secrets "TIDB_DB_PASSWORD=jyogi-tidb-password:latest" \
-  --set-secrets "TIDB_DB_DATABASE=jyogi-tidb-database:latest" \
-  $BOT_TOKEN_SECRET_FLAG \
+  --set-secrets "DISCORD_CONFIG=jyogi-discord-config:latest" \
+  --set-secrets "TIDB_CONFIG=jyogi-tidb-config:latest" \
   --set-env-vars "SERVER_PORT=8080" \
   --set-env-vars "HTTPS_ONLY=true" \
   --set-env-vars "CORS_ALLOWED_ORIGINS=$SAFE_CORS_ORIGINS" \
@@ -113,47 +97,14 @@ echo ""
 
 # サービスURLを取得
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format 'value(status.url)')
-echo -e "${GREEN}=== デプロイ成功 ===${NC}"
+
 echo -e "サービスURL: ${GREEN}$SERVICE_URL${NC}"
 
-# Redirect URIを本番URLに更新
+# Redirect URIの案内
 PROD_REDIRECT_URI="${SERVICE_URL}/auth/callback"
-echo -e "${YELLOW}DISCORD_REDIRECT_URI をチェック中: $PROD_REDIRECT_URI${NC}"
-
-# 現在のシークレット値を取得
-CURRENT_REDIRECT_URI=$(gcloud secrets versions access latest --secret="jyogi-discord-redirect-uri" --project "$PROJECT_ID" --quiet 2>/dev/null || echo "")
-
-if [ "$PROD_REDIRECT_URI" != "$CURRENT_REDIRECT_URI" ]; then
-    echo -e "${YELLOW}Redirect URIが変更されました。更新を実行します。${NC}"
-    echo "Current: $CURRENT_REDIRECT_URI"
-    echo "New:     $PROD_REDIRECT_URI"
-
-    # Secret ManagerのRedirect URIを更新
-    echo -n "$PROD_REDIRECT_URI" | gcloud secrets versions add "jyogi-discord-redirect-uri" --data-file=- --project "$PROJECT_ID" --quiet >/dev/null
-
-    # 新しいシークレット値を反映させるために新しいリビジョンを作成
-    echo "新しい設定を反映させるためにサービスを更新中..."
-    gcloud run services update "$SERVICE_NAME" \
-      --region "$REGION" \
-      --force-new-revision \
-      --quiet
-    
-    echo -e "${GREEN}✓ Redirect URIを更新しました${NC}"
-else
-    echo -e "${GREEN}✓ Redirect URIは最新です。更新をスキップします。${NC}"
-fi
-
+echo -e "Redirect URI: ${BLUE}$PROD_REDIRECT_URI${NC}"
 echo ""
+echo -e "${YELLOW}注意: Redirect URIに変更がある場合は、.envファイルの DISCORD_REDIRECT_URI を更新し、${NC}"
+echo -e "${YELLOW}      ./scripts/setup-gcp.sh を実行してシークレットを更新して再デプロイしてください。${NC}"
 
-# マイグレーションはAutoMigrateにより起動時に実行されるため、別途Jobは不要
-echo -e "${YELLOW}マイグレーションはアプリケーション起動時に自動実行されます${NC}"
-
-echo ""
-echo -e "${GREEN}=== デプロイ完了 ===${NC}"
-echo ""
-echo "次のステップ:"
-echo "1. ヘルスチェック: curl $SERVICE_URL/health"
-echo "2. Discord OAuth2アプリ設定で Redirect URI を更新（必要があれば）:"
-echo "   $SERVICE_URL/auth/callback"
-echo "3. 動作確認: $SERVICE_URL/auth/login にアクセス"
 echo ""

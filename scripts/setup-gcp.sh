@@ -86,42 +86,61 @@ echo ""
 # シークレットの作成・更新
 echo -e "${YELLOW}シークレット設定${NC}"
 
-create_secret() {
-    local name="$1"
-    local value="$2"
-    
-    if [ -z "$value" ]; then
-        echo -e "${RED}警告: $name の値が空です。スキップします。${NC}"
+create_or_update_secret() {
+    local SECRET_NAME=$1
+    local SECRET_VALUE=$2
+
+    if [ -z "$SECRET_VALUE" ]; then
+        echo -e "${RED}警告: $SECRET_NAME の値が空です。スキップします。${NC}"
         return
     fi
-    
-    # シークレットが存在しない場合は作成
-    if ! gcloud secrets describe "$name" --project "$PROJECT_ID" &>/dev/null; then
-        echo "シークレット $name を作成中..."
-        gcloud secrets create "$name" --replication-policy="automatic" --project "$PROJECT_ID" --quiet
+
+    if gcloud secrets describe "$SECRET_NAME" --project "$PROJECT_ID" &>/dev/null; then
+        echo -e "${YELLOW}既存のシークレット $SECRET_NAME を更新中...${NC}"
+        echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file=- --project "$PROJECT_ID" --quiet
+        
+        # 古いバージョンを無効化（最新版のみアクティブに）
+        VERSIONS=$(gcloud secrets versions list "$SECRET_NAME" --project "$PROJECT_ID" --format="value(name)" --filter="state=ENABLED" | tail -n +2)
+        for VERSION in $VERSIONS; do
+            gcloud secrets versions disable "$VERSION" --secret="$SECRET_NAME" --project "$PROJECT_ID" --quiet
+        done
+    else
+        echo -e "${YELLOW}新規シークレット $SECRET_NAME を作成中...${NC}"
+        echo -n "$SECRET_VALUE" | gcloud secrets create "$SECRET_NAME" --data-file=- --project "$PROJECT_ID" --replication-policy="automatic" --quiet
     fi
-    
-    # 新しいバージョンを追加
-    echo -n "$value" | gcloud secrets versions add "$name" --data-file=- --project "$PROJECT_ID" --quiet >/dev/null
-    echo "✓ $name を設定しました"
 }
 
-create_secret "jyogi-discord-client-id" "$DISCORD_CLIENT_ID"
-create_secret "jyogi-discord-client-secret" "$DISCORD_CLIENT_SECRET"
-create_secret "jyogi-discord-redirect-uri" "$DISCORD_REDIRECT_URI"
-create_secret "jyogi-discord-guild-id" "$DISCORD_GUILD_ID"
-create_secret "jyogi-jwt-secret" "$JWT_SECRET"
+# Discord設定をJSON化
+DISCORD_CONFIG_JSON=$(cat <<EOF
+{
+  "client_id": "$DISCORD_CLIENT_ID",
+  "client_secret": "$DISCORD_CLIENT_SECRET",
+  "redirect_uri": "$DISCORD_REDIRECT_URI",
+  "guild_id": "$DISCORD_GUILD_ID",
+  "jwt_secret": "$JWT_SECRET",
+  "bot_token": "${DISCORD_BOT_TOKEN:-}"
+}
+EOF
+)
 
-# TiDB接続情報
-create_secret "jyogi-tidb-host" "$TIDB_DB_HOST"
-create_secret "jyogi-tidb-port" "${TIDB_DB_PORT:-4000}"
-create_secret "jyogi-tidb-username" "$TIDB_DB_USERNAME"
-create_secret "jyogi-tidb-password" "$TIDB_DB_PASSWORD"
-create_secret "jyogi-tidb-database" "$TIDB_DB_DATABASE"
+# TiDB設定をJSON化
+TIDB_CONFIG_JSON=$(cat <<EOF
+{
+  "host": "$TIDB_DB_HOST",
+  "port": ${TIDB_DB_PORT:-4000},
+  "username": "$TIDB_DB_USERNAME",
+  "password": "$TIDB_DB_PASSWORD",
+  "database": "$TIDB_DB_DATABASE"
+}
+EOF
+)
 
-if [ -n "$DISCORD_BOT_TOKEN" ]; then
-    create_secret "jyogi-discord-bot-token" "$DISCORD_BOT_TOKEN"
-fi
+# 統合シークレットの作成
+# NOTE
+#  Secret Managerの管理数を抑えるため、関連設定を1つのシークレットにまとめています
+#  アクティブバージョンは月6つ無料枠の範囲内に収まるように注意してください
+create_or_update_secret "jyogi-discord-config" "$DISCORD_CONFIG_JSON"
+create_or_update_secret "jyogi-tidb-config" "$TIDB_CONFIG_JSON"
 
 echo -e "${GREEN}✓ シークレット設定完了${NC}"
 echo ""
