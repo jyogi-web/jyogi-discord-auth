@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 
@@ -49,21 +50,34 @@ func (h *OAuth2Handler) HandleAuthorize(w http.ResponseWriter, r *http.Request) 
 	sessionCookie, err := r.Cookie("session_token")
 	if err != nil {
 		// ユーザーが未ログインの場合、Discordログインにリダイレクト
-		// ログイン後にこのauthorizeリクエストに戻るようにstate情報を保存する必要がある
-		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
-			"error":             "login_required",
-			"error_description": "user must be logged in",
+		// ログイン後にこのauthorizeリクエストに戻るように、現在のURLをredirect_uriとして保存
+		SetSecureCookie(w, r, CookieOptions{
+			Name:     "redirect_uri",
+			Value:    r.URL.String(),
+			Path:     "/",
+			MaxAge:   600, // 10分間有効
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
 
 	// セッションからユーザーを取得
 	user, err := h.authService.GetUserBySessionToken(r.Context(), sessionCookie.Value)
 	if err != nil {
-		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
-			"error":             "invalid_session",
-			"error_description": "session is invalid or expired",
+		// セッションが無効な場合もログインにリダイレクト
+		SetSecureCookie(w, r, CookieOptions{
+			Name:     "redirect_uri",
+			Value:    r.URL.String(),
+			Path:     "/",
+			MaxAge:   600, // 10分間有効
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
 
@@ -192,9 +206,50 @@ func (h *OAuth2Handler) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 一時的にエラーを返す
-	WriteJSON(w, http.StatusNotImplemented, map[string]interface{}{
-		"error":             "not_implemented",
-		"error_description": "userinfo endpoint not yet implemented",
-	})
+	// Authorization ヘッダーからトークンを取得
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header is required",
+		})
+		return
+	}
+
+	// Bearer トークンの形式を確認
+	var accessToken string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		accessToken = authHeader[7:]
+	} else {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header must be in 'Bearer <token>' format",
+		})
+		return
+	}
+
+	// アクセストークンからユーザー情報を取得
+	user, err := h.oauth2Service.GetUserByAccessToken(r.Context(), accessToken)
+	if err != nil {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Token is invalid or expired",
+		})
+		return
+	}
+
+	// ユーザー情報とプロフィールを取得
+	memberWithProfile, err := h.authService.GetUserWithProfile(r.Context(), user.ID)
+	if err != nil {
+		log.Printf("Failed to get user profile: %v", err)
+		WriteJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"error":   "internal_error",
+			"message": "Failed to get user info",
+		})
+		return
+	}
+
+	// DTOに変換して返す（/api/userと同じ形式）
+	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	WriteJSON(w, http.StatusOK, dto)
 }
