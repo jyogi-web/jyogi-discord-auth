@@ -60,20 +60,30 @@ func Load() (*Config, error) {
 		}
 	}
 
+	discordCfg, err := ParseDiscordConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	tidbCfg, err := ParseTiDBConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
-		DiscordClientID:       os.Getenv("DISCORD_CLIENT_ID"),
-		DiscordClientSecret:   os.Getenv("DISCORD_CLIENT_SECRET"),
-		DiscordRedirectURI:    os.Getenv("DISCORD_REDIRECT_URI"),
-		DiscordGuildID:        os.Getenv("DISCORD_GUILD_ID"),
-		DiscordBotToken:       os.Getenv("DISCORD_BOT_TOKEN"),
+		DiscordClientID:       discordCfg.ClientID,
+		DiscordClientSecret:   discordCfg.ClientSecret,
+		DiscordRedirectURI:    discordCfg.RedirectURI,
+		DiscordGuildID:        discordCfg.GuildID,
+		DiscordBotToken:       discordCfg.BotToken,
 		DiscordProfileChannel: os.Getenv("DISCORD_PROFILE_CHANNEL"),
-		JWTSecret:             os.Getenv("JWT_SECRET"),
+		JWTSecret:             discordCfg.JWTSecret,
 		DatabasePath:          os.Getenv("DATABASE_PATH"),
-		TiDBHost:              os.Getenv("TIDB_DB_HOST"),
-		TiDBPort:              os.Getenv("TIDB_DB_PORT"),
-		TiDBUser:              os.Getenv("TIDB_DB_USERNAME"),
-		TiDBPassword:          os.Getenv("TIDB_DB_PASSWORD"),
-		TiDBDatabase:          os.Getenv("TIDB_DB_DATABASE"),
+		TiDBHost:              tidbCfg.Host,
+		TiDBPort:              strconv.Itoa(tidbCfg.Port),
+		TiDBUser:              tidbCfg.Username,
+		TiDBPassword:          tidbCfg.Password,
+		TiDBDatabase:          tidbCfg.Database,
 		ServerPort:            os.Getenv("SERVER_PORT"),
 		CORSAllowedOrigins:    parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
 		Env:                   os.Getenv("ENV"),
