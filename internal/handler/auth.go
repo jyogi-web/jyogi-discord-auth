@@ -51,11 +51,14 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cookieから既存のredirect_uriを確認（OAuth2フロー中の場合は既に設定されている可能性がある）
+	// また、/oauth/authorize経由の場合は元のURLを保持する必要がある
+	originalOAuthURL := ""
 	if redirectURI == "" {
 		if cookie, err := r.Cookie("redirect_uri"); err == nil && cookie.Value != "" {
 			cookieValue := cookie.Value
 			// Cookieの値が/oauth/authorizeのURL全体の場合、redirect_uriパラメータを抽出
 			if strings.HasPrefix(cookieValue, "/oauth/authorize") {
+				originalOAuthURL = cookieValue // 元のURLを保存
 				if parsedURL, err := url.Parse(cookieValue); err == nil {
 					redirectURI = parsedURL.Query().Get("redirect_uri")
 				}
@@ -109,9 +112,14 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// redirect_uriもCookieに保存（コールバック時に使用）
+	// /oauth/authorize経由の場合は元のURLを保存
+	cookieValueToSave := redirectURI
+	if originalOAuthURL != "" {
+		cookieValueToSave = originalOAuthURL
+	}
 	SetSecureCookie(w, r, CookieOptions{
 		Name:     "redirect_uri",
-		Value:    redirectURI,
+		Value:    cookieValueToSave,
 		Path:     "/",
 		MaxAge:   600, // 10分間有効
 		HttpOnly: true,
