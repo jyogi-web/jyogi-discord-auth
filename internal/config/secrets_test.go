@@ -258,7 +258,7 @@ func TestParseTiDBConfig(t *testing.T) {
 				"TIDB_DB_DATABASE": "test-db",
 			},
 			want:    nil,
-			wantErr: "TIDB_DB_HOST is required",
+			wantErr: "invalid TiDB config: host is required",
 		},
 		{
 			name: "Missing Username",
@@ -268,7 +268,7 @@ func TestParseTiDBConfig(t *testing.T) {
 				"TIDB_DB_DATABASE": "test-db",
 			},
 			want:    nil,
-			wantErr: "TIDB_DB_USERNAME is required",
+			wantErr: "invalid TiDB config: username is required",
 		},
 		{
 			name: "Missing Password",
@@ -278,7 +278,7 @@ func TestParseTiDBConfig(t *testing.T) {
 				"TIDB_DB_DATABASE": "test-db",
 			},
 			want:    nil,
-			wantErr: "TIDB_DB_PASSWORD is required",
+			wantErr: "invalid TiDB config: password is required",
 		},
 		{
 			name: "Missing Database",
@@ -288,7 +288,7 @@ func TestParseTiDBConfig(t *testing.T) {
 				"TIDB_DB_PASSWORD": "test-password",
 			},
 			want:    nil,
-			wantErr: "TIDB_DB_DATABASE is required",
+			wantErr: "invalid TiDB config: database is required",
 		},
 		{
 			name: "Default Port",

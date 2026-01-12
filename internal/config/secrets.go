@@ -102,7 +102,7 @@ func ParseDiscordConfig() (*DiscordConfig, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse DISCORD_CONFIG: %w", err)
 	}
-	
+
 	// Validation matching fallback logic
 	if config.ClientID == "" {
 		return nil, fmt.Errorf("client_id is required in DISCORD_CONFIG")
@@ -145,7 +145,7 @@ func ParseTiDBConfig() (*TiDBConfig, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse TIDB_CONFIG: %w", err)
 	}
-	
+
 	// Normalize Port to default if not set
 	if config.Port == 0 {
 		config.Port = getEnvInt("TIDB_DB_PORT", 4000)
