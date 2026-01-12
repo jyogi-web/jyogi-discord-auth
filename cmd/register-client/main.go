@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	ownerID := flag.String("owner", "", "Owner ID (Discord User ID)")
 	clientID := flag.String("id", "", "Client ID")
 	clientSecret := flag.String("secret", "", "Client Secret (Plain text)")
 	name := flag.String("name", "", "Client Name")
@@ -26,9 +27,9 @@ func main() {
 		log.Fatal("Client ID is required")
 	}
 
-	if !*update && (*clientSecret == "" || *name == "" || *redirectURIs == "") {
+	if !*update && (*ownerID == "" || *clientSecret == "" || *name == "" || *redirectURIs == "") {
 		flag.Usage()
-		log.Fatal("Client Secret, Name, and Redirect URIs are required for new clients")
+		log.Fatal("Owner ID, Client Secret, Name, and Redirect URIs are required for new clients")
 	}
 
 	// 設定を読み込む
@@ -64,7 +65,7 @@ func main() {
 		}
 		fmt.Printf("Successfully updated client: %s (ID: %s)\n", client.Name, client.ID)
 	} else {
-		client, err = clientService.RegisterClient(ctx, *clientID, *clientSecret, *name, uris)
+		client, err = clientService.RegisterClient(ctx, *ownerID, *clientID, *clientSecret, *name, uris)
 		if err != nil {
 			log.Fatalf("Failed to register client: %v", err)
 		}

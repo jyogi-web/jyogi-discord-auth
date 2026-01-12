@@ -96,12 +96,15 @@ echo -e "${GREEN}✓ デプロイ完了${NC}"
 echo ""
 
 # サービスURLを取得
-SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format 'value(status.url)')
+LEGACY_URL=$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format 'value(status.url)')
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+REGIONAL_URL="https://${SERVICE_NAME}-${PROJECT_NUMBER}.${REGION}.run.app"
 
-echo -e "サービスURL: ${GREEN}$SERVICE_URL${NC}"
+echo -e "サービスURL (推奨): ${GREEN}$REGIONAL_URL${NC}"
+echo -e "レガシーURL: ${GREEN}$LEGACY_URL${NC}"
 
-# Redirect URIの案内
-PROD_REDIRECT_URI="${SERVICE_URL}/auth/callback"
+# Redirect URIの案内（推奨のリージョンURLを使用）
+PROD_REDIRECT_URI="${REGIONAL_URL}/auth/callback"
 echo -e "Redirect URI: ${BLUE}$PROD_REDIRECT_URI${NC}"
 echo ""
 echo -e "${YELLOW}注意: Redirect URIに変更がある場合は、.envファイルの DISCORD_REDIRECT_URI を更新し、${NC}"
