@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -52,15 +53,26 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Cookieから既存のredirect_uriを確認（OAuth2フロー中の場合は既に設定されている可能性がある）
 	if redirectURI == "" {
 		if cookie, err := r.Cookie("redirect_uri"); err == nil && cookie.Value != "" {
-			redirectURI = cookie.Value
-			// 内部パスか許可オリジンか再検証
-			if strings.HasPrefix(redirectURI, "/") {
-				isValidOrigin = true
+			cookieValue := cookie.Value
+			// Cookieの値が/oauth/authorizeのURL全体の場合、redirect_uriパラメータを抽出
+			if strings.HasPrefix(cookieValue, "/oauth/authorize") {
+				if parsedURL, err := url.Parse(cookieValue); err == nil {
+					redirectURI = parsedURL.Query().Get("redirect_uri")
+				}
 			} else {
-				for _, origin := range h.allowedOrigins {
-					if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
-						isValidOrigin = true
-						break
+				redirectURI = cookieValue
+			}
+
+			// 内部パスか許可オリジンか再検証
+			if redirectURI != "" {
+				if strings.HasPrefix(redirectURI, "/") {
+					isValidOrigin = true
+				} else {
+					for _, origin := range h.allowedOrigins {
+						if redirectURI == origin || strings.HasPrefix(redirectURI, origin+"/") {
+							isValidOrigin = true
+							break
+						}
 					}
 				}
 			}
@@ -171,7 +183,17 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	redirectCookie, err := r.Cookie("redirect_uri")
 	redirectURL := ""
 	if err == nil && redirectCookie.Value != "" {
-		redirectURL = redirectCookie.Value
+		cookieValue := redirectCookie.Value
+		log.Printf("Auth callback cookie value: %s", cookieValue)
+		// Cookieの値が/oauth/authorizeのURL全体の場合、そのまま使用
+		// （/oauth/authorizeに戻して、そこからクライアントにリダイレクトさせる）
+		if strings.HasPrefix(cookieValue, "/oauth/authorize") {
+			redirectURL = cookieValue
+		} else {
+			redirectURL = cookieValue
+		}
+	} else {
+		log.Printf("Auth callback: redirect_uri cookie not found or empty (error: %v)", err)
 	}
 
 	// redirect_uriの再検証（念のため）
@@ -204,6 +226,9 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// redirect_uri Cookieを削除（使用済み）
 	DeleteCookie(w, r, "redirect_uri", "/")
+
+	// デバッグログ: リダイレクト先を出力
+	log.Printf("Auth callback redirecting to: %s", redirectURL)
 
 	// クライアントアプリにリダイレクト
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
