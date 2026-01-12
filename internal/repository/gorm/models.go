@@ -11,17 +11,17 @@ import (
 
 // User GORM model
 type User struct {
-	ID            string       `gorm:"primaryKey;type:varchar(36)"`
-	DiscordID     string       `gorm:"uniqueIndex;type:varchar(255);not null"`
-	Username      string       `gorm:"type:varchar(255);not null"`
-	DisplayName   string       `gorm:"type:varchar(255)"`
-	AvatarURL     string       `gorm:"type:varchar(512)"`
+	ID            string         `gorm:"primaryKey;type:varchar(36)"`
+	DiscordID     string         `gorm:"uniqueIndex;type:varchar(255);not null"`
+	Username      string         `gorm:"type:varchar(255);not null"`
+	DisplayName   string         `gorm:"type:varchar(255)"`
+	AvatarURL     string         `gorm:"type:varchar(512)"`
 	GuildNickname sql.NullString `gorm:"type:varchar(255)"`
-	GuildRoles    string       `gorm:"type:text"` // JSON配列として保存
-	JoinedAt      sql.NullTime `gorm:"index;type:datetime"`
-	CreatedAt     time.Time    `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time    `gorm:"autoUpdateTime"`
-	LastLoginAt   sql.NullTime `gorm:"type:datetime"`
+	GuildRoles    string         `gorm:"type:text"` // JSON配列として保存
+	JoinedAt      sql.NullTime   `gorm:"index;type:datetime"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
+	LastLoginAt   sql.NullTime   `gorm:"type:datetime"`
 }
 
 func (User) TableName() string {
