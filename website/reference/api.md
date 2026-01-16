@@ -31,14 +31,47 @@ Discordからのリダイレクトを受け取り、セッションを作成し�
 
 セッションを破棄してログアウトします。
 
-**Endpoint:** `POST /auth/logout`
+**Endpoint:** `GET /auth/logout` または `POST /auth/logout`
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `redirect_url` または `redirect_uri` | string | Optional | ログアウト後のリダイレクト先URL（許可リストに登録されたURLのみ） |
+
+**Response:**
+
+リダイレクトURLが指定されている場合：
+- 検証が通った場合: 指定されたURLにリダイレクト（307 Temporary Redirect）
+- 検証が通らない場合: JSON応答（不正なURLの警告をログに記録）
+
+リダイレクトURLが指定されていない場合：
+```json
+{
+  "success": true,
+  "message": "Logout successful"
+}
+```
 
 **Example:**
 
 ```bash
+# JSON応答を返す
 curl -X POST http://localhost:8080/auth/logout \
   -H "Cookie: session_token=..."
+
+# 指定されたURLにリダイレクト
+curl http://localhost:8080/auth/logout?redirect_url=http://localhost:3000 \
+  -H "Cookie: session_token=..."
+
+# ブラウザでアクセス（リダイレクト）
+http://localhost:8080/auth/logout?redirect_uri=http://localhost:3000/logged-out
 ```
+
+**セキュリティ:**
+- リダイレクトURLは `CORS_ALLOWED_ORIGINS` 環境変数に登録されたURLのみ許可されます
+- 内部パス（`/` で始まるパス）は常に許可されます
+- Open Redirect攻撃を防止するため、不正なURLはリダイレクトされません
 
 ## OAuth2 (SSO)
 
