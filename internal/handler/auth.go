@@ -260,6 +260,41 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	// セッションCookieを削除
 	DeleteCookie(w, r, "session_token", "/")
 
+	// リダイレクトURLを取得（redirect_url または redirect_uri をサポート）
+	redirectURL := r.URL.Query().Get("redirect_url")
+	if redirectURL == "" {
+		redirectURL = r.URL.Query().Get("redirect_uri")
+	}
+
+	// リダイレクトURLが指定されている場合は検証してリダイレクト
+	if redirectURL != "" {
+		isValidOrigin := false
+
+		// 内部パス（/で始まる）は許可
+		if strings.HasPrefix(redirectURL, "/") {
+			isValidOrigin = true
+		} else {
+			// 許可オリジンリストと照合
+			for _, origin := range h.allowedOrigins {
+				// 完全一致または正当なパス指定を確認（"example.com.attacker.com"のような攻撃を防ぐ）
+				if redirectURL == origin || strings.HasPrefix(redirectURL, origin+"/") {
+					isValidOrigin = true
+					break
+				}
+			}
+		}
+
+		// 検証が通ればリダイレクト
+		if isValidOrigin {
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+			return
+		}
+
+		// 不正なリダイレクトURLの場合はログに記録
+		log.Printf("Warning: Invalid redirect URL in logout: %s", redirectURL)
+	}
+
+	// リダイレクトURLが指定されていない、または不正な場合はJSON応答
 	WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Logout successful",
