@@ -31,7 +31,7 @@ Discordからのリダイレクトを受け取り、セッションを作成し�
 
 セッションを破棄してログアウトします。
 
-**Endpoint:** `GET /auth/logout` または `POST /auth/logout`
+**Endpoint:** `POST /auth/logout`
 
 **Parameters:**
 
