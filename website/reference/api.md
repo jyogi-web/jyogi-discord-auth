@@ -436,10 +436,33 @@ Authorization: Bearer {access_token}
 
 ```json
 {
+  "error": "invalid_parameter",
+  "message": "Invalid limit parameter: must be between 1 and 100, got 150"
+}
+```
+
+または
+
+```json
+{
+  "error": "invalid_parameter",
+  "message": "Invalid offset parameter: must be >= 0, got -5"
+}
+```
+
+または
+
+```json
+{
   "error": "internal_error",
   "message": "Failed to get members"
 }
 ```
+
+**セキュリティ:**
+- 現在、全ての有効なOAuth2アクセストークンでアクセス可能です
+- 将来的にはスコープベースの認可（例: `members.read`）を実装予定
+- メンバー一覧には機密情報が含まれるため、本番環境では適切な認可を実装することを推奨します
 
 **Example:**
 

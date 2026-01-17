@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -352,7 +353,7 @@ func (h *OAuth2Handler) HandleMembers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// アクセストークンを検証（トークンの有効性を確認）
-	_, err := h.oauth2Service.GetUserByAccessToken(r.Context(), accessToken)
+	user, err := h.oauth2Service.GetUserByAccessToken(r.Context(), accessToken)
 	if err != nil {
 		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
 			"error":   "invalid_token",
@@ -361,26 +362,68 @@ func (h *OAuth2Handler) HandleMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ページネーションパラメータの取得
+	// TODO: 認可チェック - 将来のスコープシステム実装時に追加
+	// このエンドポイントは現在、全ての有効なOAuth2トークンでアクセス可能です。
+	// 将来的には以下のチェックを実装する予定：
+	// 1. トークンに "members.read" スコープが含まれているか
+	// 2. クライアントまたはユーザーが適切なロール（例: "admin"）を持っているか
+	//
+	// スコープチェックの実装例：
+	// token, _ := h.oauth2Service.GetTokenByAccessToken(r.Context(), accessToken)
+	// if !hasScope(token.Scopes, "members.read") {
+	//     WriteJSON(w, http.StatusForbidden, map[string]interface{}{
+	//         "error":   "insufficient_scope",
+	//         "message": "Token does not have required scope: members.read",
+	//     })
+	//     return
+	// }
+	//
+	// 注意: メンバー一覧には機密情報（プロフィール）が含まれるため、
+	// 本番環境では適切なスコープベースの認可を実装することを強く推奨します。
+	_ = user // トークン検証済み、将来のロールチェックで使用予定
+
+	// ページネーションパラメータの取得と検証
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
 	limit := 50
 	if limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil {
-			if parsedLimit > 0 && parsedLimit <= 100 {
-				limit = parsedLimit
-			}
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid limit parameter: must be an integer, got '%s'", limitStr),
+			})
+			return
 		}
+		if parsedLimit < 1 || parsedLimit > 100 {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid limit parameter: must be between 1 and 100, got %d", parsedLimit),
+			})
+			return
+		}
+		limit = parsedLimit
 	}
 
 	offset := 0
 	if offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil {
-			if parsedOffset >= 0 {
-				offset = parsedOffset
-			}
+		parsedOffset, err := strconv.Atoi(offsetStr)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid offset parameter: must be an integer, got '%s'", offsetStr),
+			})
+			return
 		}
+		if parsedOffset < 0 {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid offset parameter: must be >= 0, got %d", parsedOffset),
+			})
+			return
+		}
+		offset = parsedOffset
 	}
 
 	// メンバー一覧をプロフィール情報付きで取得
