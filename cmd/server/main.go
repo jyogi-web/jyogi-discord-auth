@@ -142,6 +142,7 @@ func main() {
 	jwtAuthMiddleware := middleware.JWTAuth(cfg.JWTSecret)
 	mux.Handle("/api/verify", jwtAuthMiddleware(http.HandlerFunc(apiHandler.HandleVerify)))
 	mux.Handle("/api/user", jwtAuthMiddleware(http.HandlerFunc(apiHandler.HandleUser)))
+	mux.Handle("/api/user/{id}", jwtAuthMiddleware(http.HandlerFunc(apiHandler.HandleUserByID)))
 
 	// ミドルウェアを適用
 	handler := middleware.CORS(cfg.CORSAllowedOrigins)(mux)

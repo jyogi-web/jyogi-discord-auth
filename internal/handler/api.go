@@ -64,3 +64,26 @@ func (h *APIHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
 	WriteJSON(w, http.StatusOK, dto)
 }
+
+// HandleUserByID は指定されたIDのユーザー情報を返します
+// GET /api/user/{id}
+func (h *APIHandler) HandleUserByID(w http.ResponseWriter, r *http.Request) {
+	// URLパラメータからIDを取得
+	userID := r.PathValue("id")
+	if userID == "" {
+		WriteError(w, http.StatusBadRequest, "invalid_user_id", "User ID is required")
+		return
+	}
+
+	// ユーザー情報とプロフィールを取得
+	memberWithProfile, err := h.authService.GetUserWithProfile(r.Context(), userID)
+	if err != nil {
+		log.Printf("Failed to get user profile: %v", err)
+		WriteError(w, http.StatusNotFound, "user_not_found", "User not found")
+		return
+	}
+
+	// DTOに変換して返す
+	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	WriteJSON(w, http.StatusOK, dto)
+}
