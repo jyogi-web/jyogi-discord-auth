@@ -308,6 +308,72 @@ curl http://localhost:8080/oauth/userinfo \
   -H "Authorization: Bearer eyJhbG..."
 ```
 
+### 特定ユーザー情報取得
+
+指定されたIDのユーザー情報を取得します。プロフィール同期機能により、Discordの自己紹介チャンネルの内容も含まれます。
+
+**Endpoint:** `GET /oauth/user/{id}`
+
+**Headers:**
+
+```
+Authorization: Bearer {access_token}
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | ユーザーID（URLパス） |
+
+**Response:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "discord_id": "123456789012345678",
+  "username": "jyogi_taro",
+  "display_name": "じょぎ太郎",
+  "avatar_url": "https://cdn.discordapp.com/avatars/...",
+  "last_login_at": "2024-01-01T12:00:00Z",
+  "guild_nickname": "太郎 [B4]",
+  "guild_roles": ["111111", "222222"],
+  "joined_at": "2023-04-01T09:00:00Z",
+  "profile": {
+    "real_name": "定規 太郎",
+    "student_id": "20X1234",
+    "hobbies": "プログラミング, ゲーム",
+    "what_to_do": "最強の認証システムを作る",
+    "comment": "よろしくお願いします!"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "invalid_token",
+  "message": "Token is invalid or expired"
+}
+```
+
+または
+
+```json
+{
+  "error": "user_not_found",
+  "message": "User not found"
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/oauth/user/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
 ### トークン検証（未実装）
 
 OAuth2アクセストークンの検証エンドポイント。

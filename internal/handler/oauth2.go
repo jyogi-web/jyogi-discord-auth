@@ -253,3 +253,69 @@ func (h *OAuth2Handler) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
 	WriteJSON(w, http.StatusOK, dto)
 }
+
+// HandleUserByID はGET /oauth/user/{id}を処理します
+// アクセストークンで認証し、指定されたIDのユーザー情報を返します
+func (h *OAuth2Handler) HandleUserByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Authorization ヘッダーからトークンを取得
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header is required",
+		})
+		return
+	}
+
+	// Bearer トークンの形式を確認
+	var accessToken string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		accessToken = authHeader[7:]
+	} else {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header must be in 'Bearer <token>' format",
+		})
+		return
+	}
+
+	// アクセストークンを検証（トークンの有効性を確認）
+	_, err := h.oauth2Service.GetUserByAccessToken(r.Context(), accessToken)
+	if err != nil {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Token is invalid or expired",
+		})
+		return
+	}
+
+	// URLパラメータからIDを取得
+	userID := r.PathValue("id")
+	if userID == "" {
+		WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"error":   "invalid_user_id",
+			"message": "User ID is required",
+		})
+		return
+	}
+
+	// 指定されたIDのユーザー情報とプロフィールを取得
+	memberWithProfile, err := h.authService.GetUserWithProfile(r.Context(), userID)
+	if err != nil {
+		log.Printf("Failed to get user profile: %v", err)
+		WriteJSON(w, http.StatusNotFound, map[string]interface{}{
+			"error":   "user_not_found",
+			"message": "User not found",
+		})
+		return
+	}
+
+	// DTOに変換して返す
+	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	WriteJSON(w, http.StatusOK, dto)
+}
