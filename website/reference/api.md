@@ -73,6 +73,94 @@ http://localhost:8080/auth/logout?redirect_uri=http://localhost:3000/logged-out
 - 内部パス（`/` で始まるパス）は常に許可されます
 - Open Redirect攻撃を防止するため、不正なURLはリダイレクトされません
 
+### 現在のユーザー情報取得
+
+セッション認証を使用して、現在ログインしているユーザーの情報を取得します。
+
+**Endpoint:** `GET /api/me`
+
+**Authentication:** セッションCookie (`session_token`)
+
+**Response:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "discord_id": "123456789012345678",
+  "username": "jyogi_taro",
+  "avatar_url": "https://cdn.discordapp.com/avatars/...",
+  "last_login_at": "2024-01-01T12:00:00Z"
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "unauthorized",
+  "message": "No active session"
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/api/me \
+  -H "Cookie: session_token=..."
+```
+
+### メンバー一覧取得
+
+じょぎサーバーのメンバー一覧をプロフィール情報付きで取得します。ページネーションに対応しています。
+
+**Endpoint:** `GET /api/members`
+
+**Authentication:** セッションCookie (`session_token`)
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `limit` | integer | Optional | 取得件数（デフォルト: 50、最大: 100） |
+| `offset` | integer | Optional | オフセット（デフォルト: 0） |
+
+**Response:**
+
+```json
+{
+  "members": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "discord_id": "123456789012345678",
+      "username": "jyogi_taro",
+      "display_name": "じょぎ太郎",
+      "avatar_url": "https://cdn.discordapp.com/avatars/...",
+      "last_login_at": "2024-01-01T12:00:00Z",
+      "guild_nickname": "太郎 [B4]",
+      "guild_roles": ["111111", "222222"],
+      "joined_at": "2023-04-01T09:00:00Z",
+      "profile": {
+        "real_name": "定規 太郎",
+        "student_id": "20X1234",
+        "hobbies": "プログラミング, ゲーム",
+        "what_to_do": "最強の認証システムを作る",
+        "comment": "よろしくお願いします!"
+      }
+    }
+  ],
+  "limit": 50,
+  "offset": 0,
+  "count": 1
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/api/members?limit=10&offset=0 \
+  -H "Cookie: session_token=..."
+```
+
 ## OAuth2 (SSO)
 
 クライアントアプリケーション向けのOAuth2エンドポイントです。
@@ -220,6 +308,112 @@ curl http://localhost:8080/oauth/userinfo \
   -H "Authorization: Bearer eyJhbG..."
 ```
 
+### トークン検証（未実装）
+
+OAuth2アクセストークンの検証エンドポイント。
+
+**Endpoint:** `GET /oauth/verify`
+
+**Status:** 未実装
+
+**Response:**
+
+```json
+{
+  "error": "not_implemented",
+  "error_description": "token verification not yet implemented"
+}
+```
+
+**注意:**
+- このエンドポイントは現在未実装です
+- JWT検証には `/api/verify` を使用してください
+
+## トークン (Token)
+
+セッション認証を使用してJWTトークンを発行・更新するエンドポイントです。
+
+### JWT発行
+
+セッショントークン（Cookie）を使用してJWTアクセストークンを発行します。
+
+**Endpoint:** `POST /token`
+
+**Authentication:** セッションCookie (`session_token`)
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 604800
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "unauthorized",
+  "message": "No active session"
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8080/token \
+  -H "Cookie: session_token=..."
+```
+
+**注意:**
+- セッション認証が必要です（Cookieに`session_token`が必要）
+- 発行されたJWTは7日間有効です
+
+### JWT更新
+
+既存のJWTアクセストークンを使用して新しいJWTを発行します。
+
+**Endpoint:** `POST /token/refresh`
+
+**Headers:**
+
+```
+Authorization: Bearer {access_token}
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 604800
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "invalid_token",
+  "message": "Token is invalid or expired"
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8080/token/refresh \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
+**注意:**
+- 既存のアクセストークンが必要です
+- トークンを検証後、新しいJWTを発行します（7日間有効）
+- OAuth2の`refresh_token`とは異なり、既存のアクセストークンを使用します
+
 ## 保護されたリソース (Protected)
 
 以下のエンドポイントは有効なJWTが必要です。ヘッダーに `Authorization: Bearer <token>` を付与してください。
@@ -257,6 +451,57 @@ curl http://localhost:8080/oauth/userinfo \
 
 ```bash
 curl http://localhost:8080/api/user \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
+### 特定ユーザーの情報取得
+
+指定されたIDのユーザー情報を取得します。プロフィール同期機能により、Discordの自己紹介チャンネルの内容も含まれます。
+
+**Endpoint:** `GET /api/user/{id}`
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | ユーザーID（URLパス） |
+
+**Response:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "discord_id": "123456789012345678",
+  "username": "jyogi_taro",
+  "display_name": "じょぎ太郎",
+  "avatar_url": "https://cdn.discordapp.com/avatars/...",
+  "last_login_at": "2024-01-01T12:00:00Z",
+  "guild_nickname": "太郎 [B4]",
+  "guild_roles": ["111111", "222222"],
+  "joined_at": "2023-04-01T09:00:00Z",
+  "profile": {
+    "real_name": "定規 太郎",
+    "student_id": "20X1234",
+    "hobbies": "プログラミング, ゲーム",
+    "what_to_do": "最強の認証システムを作る",
+    "comment": "よろしくお願いします！"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "user_not_found",
+  "message": "User not found"
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/api/user/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer eyJhbG..."
 ```
 
