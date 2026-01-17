@@ -374,6 +374,103 @@ curl http://localhost:8080/oauth/user/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer eyJhbG..."
 ```
 
+### メンバー一覧取得
+
+じょぎサーバーのメンバー一覧をプロフィール情報付きで取得します。ページネーションに対応しています。
+
+**Endpoint:** `GET /oauth/members`
+
+**Headers:**
+
+```
+Authorization: Bearer {access_token}
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `limit` | integer | Optional | 取得件数（デフォルト: 50、最大: 100） |
+| `offset` | integer | Optional | オフセット（デフォルト: 0） |
+
+**Response:**
+
+```json
+{
+  "members": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "discord_id": "123456789012345678",
+      "username": "jyogi_taro",
+      "display_name": "じょぎ太郎",
+      "avatar_url": "https://cdn.discordapp.com/avatars/...",
+      "last_login_at": "2024-01-01T12:00:00Z",
+      "guild_nickname": "太郎 [B4]",
+      "guild_roles": ["111111", "222222"],
+      "joined_at": "2023-04-01T09:00:00Z",
+      "profile": {
+        "real_name": "定規 太郎",
+        "student_id": "20X1234",
+        "hobbies": "プログラミング, ゲーム",
+        "what_to_do": "最強の認証システムを作る",
+        "comment": "よろしくお願いします!"
+      }
+    }
+  ],
+  "limit": 50,
+  "offset": 0,
+  "count": 1
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "invalid_token",
+  "message": "Token is invalid or expired"
+}
+```
+
+または
+
+```json
+{
+  "error": "invalid_parameter",
+  "message": "Invalid limit parameter: must be between 1 and 100, got 150"
+}
+```
+
+または
+
+```json
+{
+  "error": "invalid_parameter",
+  "message": "Invalid offset parameter: must be >= 0, got -5"
+}
+```
+
+または
+
+```json
+{
+  "error": "internal_error",
+  "message": "Failed to get members"
+}
+```
+
+**セキュリティ:**
+- 現在、全ての有効なOAuth2アクセストークンでアクセス可能です
+- 将来的にはスコープベースの認可（例: `members.read`）を実装予定
+- メンバー一覧には機密情報が含まれるため、本番環境では適切な認可を実装することを推奨します
+
+**Example:**
+
+```bash
+curl http://localhost:8080/oauth/members?limit=10&offset=0 \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
 ### トークン検証（未実装）
 
 OAuth2アクセストークンの検証エンドポイント。

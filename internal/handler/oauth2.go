@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/jyogi-web/jyogi-discord-auth/internal/service"
 )
@@ -318,4 +320,134 @@ func (h *OAuth2Handler) HandleUserByID(w http.ResponseWriter, r *http.Request) {
 	// DTOに変換して返す
 	dto := NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
 	WriteJSON(w, http.StatusOK, dto)
+}
+
+// HandleMembers はGET /oauth/membersを処理します
+// アクセストークンで認証し、じょぎメンバー一覧をプロフィール情報付きで返します
+func (h *OAuth2Handler) HandleMembers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Authorization ヘッダーからトークンを取得
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header is required",
+		})
+		return
+	}
+
+	// Bearer トークンの形式を確認
+	var accessToken string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		accessToken = authHeader[7:]
+	} else {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Authorization header must be in 'Bearer <token>' format",
+		})
+		return
+	}
+
+	// アクセストークンを検証（トークンの有効性を確認）
+	user, err := h.oauth2Service.GetUserByAccessToken(r.Context(), accessToken)
+	if err != nil {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"error":   "invalid_token",
+			"message": "Token is invalid or expired",
+		})
+		return
+	}
+
+	// TODO: 認可チェック - 将来のスコープシステム実装時に追加
+	// このエンドポイントは現在、全ての有効なOAuth2トークンでアクセス可能です。
+	// 将来的には以下のチェックを実装する予定：
+	// 1. トークンに "members.read" スコープが含まれているか
+	// 2. クライアントまたはユーザーが適切なロール（例: "admin"）を持っているか
+	//
+	// スコープチェックの実装例：
+	// token, _ := h.oauth2Service.GetTokenByAccessToken(r.Context(), accessToken)
+	// if !hasScope(token.Scopes, "members.read") {
+	//     WriteJSON(w, http.StatusForbidden, map[string]interface{}{
+	//         "error":   "insufficient_scope",
+	//         "message": "Token does not have required scope: members.read",
+	//     })
+	//     return
+	// }
+	//
+	// 注意: メンバー一覧には機密情報（プロフィール）が含まれるため、
+	// 本番環境では適切なスコープベースの認可を実装することを強く推奨します。
+	_ = user // トークン検証済み、将来のロールチェックで使用予定
+
+	// ページネーションパラメータの取得と検証
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	if limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid limit parameter: must be an integer, got '%s'", limitStr),
+			})
+			return
+		}
+		if parsedLimit < 1 || parsedLimit > 100 {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid limit parameter: must be between 1 and 100, got %d", parsedLimit),
+			})
+			return
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if offsetStr != "" {
+		parsedOffset, err := strconv.Atoi(offsetStr)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid offset parameter: must be an integer, got '%s'", offsetStr),
+			})
+			return
+		}
+		if parsedOffset < 0 {
+			WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "invalid_parameter",
+				"message": fmt.Sprintf("Invalid offset parameter: must be >= 0, got %d", parsedOffset),
+			})
+			return
+		}
+		offset = parsedOffset
+	}
+
+	// メンバー一覧をプロフィール情報付きで取得
+	membersWithProfiles, err := h.authService.GetMembersWithProfiles(r.Context(), limit, offset)
+	if err != nil {
+		log.Printf("Failed to get members: %v", err)
+		WriteJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"error":   "internal_error",
+			"message": "Failed to get members",
+		})
+		return
+	}
+
+	// DTOに変換
+	membersList := make([]*UserWithProfile, len(membersWithProfiles))
+	for i, memberWithProfile := range membersWithProfiles {
+		membersList[i] = NewUserWithProfile(memberWithProfile.User, memberWithProfile.Profile)
+	}
+
+	// メンバー一覧を返す
+	WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"members": membersList,
+		"limit":   limit,
+		"offset":  offset,
+		"count":   len(membersList),
+	})
 }

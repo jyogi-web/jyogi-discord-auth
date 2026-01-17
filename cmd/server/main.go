@@ -138,6 +138,7 @@ func main() {
 	mux.HandleFunc("/oauth/verify", oauth2Handler.HandleVerifyToken)
 	mux.HandleFunc("/oauth/userinfo", oauth2Handler.HandleUserInfo)
 	mux.HandleFunc("/oauth/user/{id}", oauth2Handler.HandleUserByID)
+	mux.HandleFunc("/oauth/members", oauth2Handler.HandleMembers)
 
 	// JWT認証が必要なAPIエンドポイント
 	jwtAuthMiddleware := middleware.JWTAuth(cfg.JWTSecret)
