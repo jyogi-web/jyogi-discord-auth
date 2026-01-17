@@ -79,6 +79,8 @@ http://localhost:8080/auth/logout?redirect_uri=http://localhost:3000/logged-out
 
 ### 認可エンドポイント
 
+OAuth2認可フローを開始します。ユーザーがログインしていない場合は、自動的に `/auth/login` にリダイレクトされます。
+
 **Endpoint:** `GET /oauth/authorize`
 
 **Parameters:**
@@ -86,32 +88,48 @@ http://localhost:8080/auth/logout?redirect_uri=http://localhost:3000/logged-out
 | Name | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `client_id` | string | Yes | クライアントID |
-| `redirect_uri` | string | Yes | リダイレクトURI |
+| `redirect_uri` | string | Yes | リダイレクトURI（事前に登録されたURIのみ許可） |
 | `response_type` | string | Yes | `code` 固定 |
-| `state` | string | Optional | CSRF対策用文字列 |
+| `state` | string | Optional | CSRF対策用文字列（推奨） |
+
+**Response (ユーザー未ログイン):**
+
+```
+HTTP/1.1 302 Found
+Location: /auth/login
+```
+
+**Response (ユーザーログイン済み):**
+
+```
+HTTP/1.1 302 Found
+Location: {redirect_uri}?code={authorization_code}&state={state}
+```
 
 **Example:**
 
 ```bash
-http://localhost:8080/oauth/authorize?client_id=your_id&redirect_uri=...&response_type=code&state=xyz
+# ブラウザでアクセス
+http://localhost:8080/oauth/authorize?client_id=your_client_id&redirect_uri=http://localhost:3000/callback&response_type=code&state=random_state_string
 ```
 
 ### トークンエンドポイント
 
-認可コードをアクセストークンに交換します。
+認可コードをアクセストークンとリフレッシュトークンに交換します。
 
 **Endpoint:** `POST /oauth/token`
+
+**Content-Type:** `application/x-www-form-urlencoded`
 
 **Parameters (Form Data):**
 
 | Name | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `grant_type` | string | Yes | `authorization_code` または `refresh_token` |
-| `code` | string | Yes | 認可コード (grant_type=authorization_code時) |
-| `refresh_token` | string | Yes | リフレッシュトークン (grant_type=refresh_token時) |
+| `grant_type` | string | Yes | `authorization_code` 固定 |
+| `code` | string | Yes | 認可コード |
 | `client_id` | string | Yes | クライアントID |
 | `client_secret` | string | Yes | クライアントシークレット |
-| `redirect_uri` | string | Yes | リダイレクトURI |
+| `redirect_uri` | string | Yes | 認可時に使用したリダイレクトURI |
 
 **Response:**
 
@@ -120,8 +138,16 @@ http://localhost:8080/oauth/authorize?client_id=your_id&redirect_uri=...&respons
   "access_token": "eyJhbG...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "def...",
-  "scope": "identify"
+  "refresh_token": "def..."
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "invalid_grant",
+  "error_description": "authorization code expired"
 }
 ```
 
@@ -129,11 +155,69 @@ http://localhost:8080/oauth/authorize?client_id=your_id&redirect_uri=...&respons
 
 ```bash
 curl -X POST http://localhost:8080/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
   -d "code=SplxlOBeZQQYbYS6WxSbIA" \
   -d "redirect_uri=http://localhost:3000/callback" \
   -d "client_id=CLIENT_ID" \
   -d "client_secret=CLIENT_SECRET"
+```
+
+**注意:**
+- 認可コードは10分間有効で、一度のみ使用可能です
+- アクセストークンは1時間有効です
+- リフレッシュトークンは7日間有効です
+- `grant_type=refresh_token` によるトークン更新は現在未実装です
+
+### ユーザー情報エンドポイント
+
+アクセストークンに紐づくユーザー情報を取得します。プロフィール同期機能により、Discordの自己紹介チャンネルの内容も含まれます。
+
+**Endpoint:** `GET /oauth/userinfo`
+
+**Headers:**
+
+```
+Authorization: Bearer {access_token}
+```
+
+**Response:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "discord_id": "123456789012345678",
+  "username": "jyogi_taro",
+  "display_name": "じょぎ太郎",
+  "avatar_url": "https://cdn.discordapp.com/avatars/...",
+  "last_login_at": "2024-01-01T12:00:00Z",
+  "guild_nickname": "太郎 [B4]",
+  "guild_roles": ["111111", "222222"],
+  "joined_at": "2023-04-01T09:00:00Z",
+  "profile": {
+    "real_name": "定規 太郎",
+    "student_id": "20X1234",
+    "hobbies": "プログラミング, ゲーム",
+    "what_to_do": "最強の認証システムを作る",
+    "comment": "よろしくお願いします!"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "error": "invalid_token",
+  "message": "Token is invalid or expired"
+}
+```
+
+**Example:**
+
+```bash
+curl http://localhost:8080/oauth/userinfo \
+  -H "Authorization: Bearer eyJhbG..."
 ```
 
 ## 保護されたリソース (Protected)
